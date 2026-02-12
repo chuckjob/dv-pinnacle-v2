@@ -1642,15 +1642,18 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
               </div>
               {creationMode === "existing" && (
                 <div className="mt-3 pt-3 border-t border-plum-100" onClick={(e) => e.stopPropagation()}>
-                  <select
-                    value={selectedExistingProfileId}
-                    onChange={(e) => setSelectedExistingProfileId(e.target.value)}
-                    className="w-full h-10 px-3 text-body3 bg-white border border-neutral-200 rounded-lg outline-none focus:border-plum-300 focus:ring-2 focus:ring-plum-100 appearance-none cursor-pointer"
-                  >
-                    {brandSafetyProfiles.filter(p => p.id !== "7").map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={selectedExistingProfileId}
+                      onChange={(e) => setSelectedExistingProfileId(e.target.value)}
+                      className="w-full h-10 px-3 pr-8 text-body3 bg-white border border-neutral-200 rounded-lg outline-none focus:border-plum-300 focus:ring-2 focus:ring-plum-100 appearance-none cursor-pointer"
+                    >
+                      {brandSafetyProfiles.filter(p => p.id !== "7").map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-cool-400 pointer-events-none" />
+                  </div>
                 </div>
               )}
             </div>
