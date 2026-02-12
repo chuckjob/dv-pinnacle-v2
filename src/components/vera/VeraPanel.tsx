@@ -315,7 +315,6 @@ interface ConnectedDsp {
 
 type CampaignSetupPhase =
   | "creation-mode"
-  | "existing-selection"
   | "brief-input"
   | "brief-analyzing"
   | "brand-intelligence"
@@ -1019,8 +1018,8 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
   const [creationMode, setCreationMode] = useState<"new" | "existing" | null>(null);
   const [creationModeConfirmed, setCreationModeConfirmed] = useState(false);
   const [creationModeExpanded, setCreationModeExpanded] = useState(false);
-  // Step 1b: Existing profile selection
-  const [selectedExistingProfileId, setSelectedExistingProfileId] = useState<string | null>(null);
+  // Step 1b: Existing profile selection (inline in creation-mode card)
+  const [selectedExistingProfileId, setSelectedExistingProfileId] = useState<string>(brandSafetyProfiles.filter(p => p.id !== "7")[0]?.id ?? "");
   const [existingProfileConfirmed, setExistingProfileConfirmed] = useState(false);
   const [existingProfileExpanded, setExistingProfileExpanded] = useState(false);
   // Step 2: Brief input
@@ -1068,7 +1067,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
       setCreationMode(null);
       setCreationModeConfirmed(false);
       setCreationModeExpanded(false);
-      setSelectedExistingProfileId(null);
+      setSelectedExistingProfileId(brandSafetyProfiles.filter(p => p.id !== "7")[0]?.id ?? "");
       setExistingProfileConfirmed(false);
       setExistingProfileExpanded(false);
       setBriefInputMethod("upload");
@@ -1636,11 +1635,24 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                 <div className="w-9 h-9 rounded-lg bg-plum-50 flex items-center justify-center flex-shrink-0">
                   <Copy className="h-4 w-4 text-plum-600" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-body3 font-medium text-cool-900">Start from an existing profile</p>
                   <p className="text-label text-cool-500 mt-0.5">Clone and customize one of your existing profiles</p>
                 </div>
               </div>
+              {creationMode === "existing" && (
+                <div className="mt-3 pt-3 border-t border-plum-100" onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={selectedExistingProfileId}
+                    onChange={(e) => setSelectedExistingProfileId(e.target.value)}
+                    className="w-full h-10 px-3 text-body3 bg-white border border-neutral-200 rounded-lg outline-none focus:border-plum-300 focus:ring-2 focus:ring-plum-100 appearance-none cursor-pointer"
+                  >
+                    {brandSafetyProfiles.filter(p => p.id !== "7").map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div
               onClick={() => setCreationMode("new")}
@@ -1663,11 +1675,14 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
               onClick={() => {
                 if (!creationMode) return;
                 if (creationMode === "existing") {
+                  const pName = brandSafetyProfiles.find(p => p.id === selectedExistingProfileId)?.name ?? "selected profile";
                   setCreationModeConfirmed(true);
-                  const msg: Message = { id: `mode-${Date.now()}`, role: "user", content: "I'll start from an existing profile." };
-                  const veraMsg: Message = { id: `vera-existing-${Date.now()}`, role: "vera", content: "Which existing profile would you like to use as a starting point? I'll carry over its settings and customize them based on your campaign brief." };
+                  setExistingProfileConfirmed(true);
+                  setProfileName(`${pName} — Copy`);
+                  const msg: Message = { id: `mode-${Date.now()}`, role: "user", content: `Start from "${pName}".` };
+                  const veraMsg: Message = { id: `vera-brief-existing-${Date.now()}`, role: "vera", content: `I'll use "${pName}" as your starting point. Now upload a brief or I can crawl your website.` };
                   setMessages(prev => [...prev, msg, veraMsg]);
-                  setSetupPhase("existing-selection");
+                  setSetupPhase("brief-input");
                 } else {
                   setCreationModeConfirmed(true);
                   const msg: Message = { id: `mode-${Date.now()}`, role: "user", content: "I'll create a new profile from scratch." };
@@ -1684,8 +1699,8 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
           </div>
         )}
 
-        {/* Step 1b: Existing Profile Selection — compact approved state */}
-        {isCampaignSetup && existingProfileConfirmed && setupPhase !== "existing-selection" && (
+        {/* Step 1b: Existing Profile — compact approved state (shown after creation-mode when existing was chosen) */}
+        {isCampaignSetup && existingProfileConfirmed && setupPhase !== "creation-mode" && (
           <div className={cn("self-start space-y-2", cardWidth)}>
             <button
               onClick={() => setExistingProfileExpanded(prev => !prev)}
@@ -1696,65 +1711,6 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
               </div>
               <span className="text-body3 font-medium text-grass-700 flex-1 text-left">Based on: {brandSafetyProfiles.find(p => p.id === selectedExistingProfileId)?.name ?? "Selected profile"}</span>
               {existingProfileExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
-            </button>
-          </div>
-        )}
-        {/* Step 1b: Existing Profile Selection — full view */}
-        {isCampaignSetup && setupPhase === "existing-selection" && (
-          <div className={cn("space-y-3 self-start", cardWidth)}>
-            <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
-              <div className="px-5 py-4 bg-gradient-to-r from-plum-50 to-white border-b border-neutral-100">
-                <span className="text-body3 font-semibold text-cool-900">Select Base Profile</span>
-                <p className="text-caption text-cool-500 mt-0.5">Choose a profile to use as your starting point</p>
-              </div>
-              <div className="px-5 py-4">
-                <select
-                  value={selectedExistingProfileId || ""}
-                  onChange={(e) => setSelectedExistingProfileId(e.target.value || null)}
-                  className="w-full h-10 px-3 text-body3 bg-white border border-neutral-200 rounded-lg outline-none focus:border-plum-300 focus:ring-2 focus:ring-plum-100 appearance-none cursor-pointer"
-                >
-                  <option value="">Select a profile...</option>
-                  {brandSafetyProfiles.filter(p => p.id !== "7").map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-                {selectedExistingProfileId && (() => {
-                  const p = brandSafetyProfiles.find(pr => pr.id === selectedExistingProfileId);
-                  if (!p) return null;
-                  const riskStyles: Record<string, string> = { strict: "bg-grass-50 text-grass-700", moderate: "bg-orange-50 text-orange-700", permissive: "bg-tomato-50 text-tomato-700" };
-                  return (
-                    <div className="mt-3 rounded-lg border border-neutral-100 bg-neutral-25 p-3 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-body3 font-medium text-cool-900">{p.name}</span>
-                        <span className={cn("px-1.5 py-0.5 rounded text-label font-medium", riskStyles[p.riskLevel])}>{p.riskLevel.charAt(0).toUpperCase() + p.riskLevel.slice(1)}</span>
-                        <span className={cn("px-1.5 py-0.5 rounded text-label font-medium", p.status === "active" ? "bg-grass-50 text-grass-700" : p.status === "draft" ? "bg-orange-50 text-orange-700" : "bg-neutral-100 text-cool-500")}>{p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span>
-                      </div>
-                      <p className="text-caption text-cool-500">{p.categories.slice(0, 4).join(", ")}{p.categories.length > 4 ? ` +${p.categories.length - 4} more` : ""}</p>
-                      <div className="flex items-center gap-3 text-caption text-cool-500">
-                        <span>{p.campaignsUsing} campaigns</span>
-                        <span>·</span>
-                        <span>{p.keywordsBlocked} keywords</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                if (!selectedExistingProfileId) return;
-                setExistingProfileConfirmed(true);
-                const profileName = brandSafetyProfiles.find(p => p.id === selectedExistingProfileId)?.name ?? "selected profile";
-                const msg: Message = { id: `select-existing-${Date.now()}`, role: "user", content: `Use "${profileName}" as the starting point.` };
-                const veraMsg: Message = { id: `vera-brief-existing-${Date.now()}`, role: "vera", content: `I'll use "${profileName}" as your starting point. Now upload a brief or I can crawl your website.` };
-                setMessages(prev => [...prev, msg, veraMsg]);
-                setProfileName(`${profileName} — Copy`);
-                setSetupPhase("brief-input");
-              }}
-              disabled={!selectedExistingProfileId}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors disabled:bg-neutral-200 disabled:text-neutral-400"
-            >
-              Continue with this profile
             </button>
           </div>
         )}
