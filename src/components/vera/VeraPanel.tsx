@@ -1602,8 +1602,8 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
 
         {/* ===== CAMPAIGN SETUP WIZARD ===== */}
 
-        {/* Step 1: Creation Mode — compact approved state */}
-        {isCampaignSetup && creationModeConfirmed && setupPhase !== "creation-mode" && (
+        {/* Step 1: Creation Mode — compact approved state (only for "new" path; "existing" uses the "Based on" card instead) */}
+        {isCampaignSetup && creationModeConfirmed && creationMode === "new" && setupPhase !== "creation-mode" && (
           <div className={cn("self-start space-y-2", cardWidth)}>
             <button
               onClick={() => setCreationModeExpanded(prev => !prev)}
@@ -1613,11 +1613,9 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                 <Check className="h-3 w-3 text-white" />
               </div>
               <span className="text-body3 font-medium text-grass-700 flex-1 text-left">
-                {creationMode === "existing"
-                  ? `Starting from: ${brandSafetyProfiles.find(p => p.id === selectedExistingProfileId)?.name ?? "Existing profile"}`
-                  : "Creating new profile from scratch"}
+                Creating new profile from scratch
               </span>
-              {creationModeExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
+              {creationModeExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </button>
           </div>
         )}
