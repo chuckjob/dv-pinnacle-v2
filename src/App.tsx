@@ -15,7 +15,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename="/dv-pinnacle-v2">
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/campaign/:id" element={<CampaignDetail />} />
