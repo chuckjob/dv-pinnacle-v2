@@ -2464,7 +2464,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
 
             {showFinalNav && (
               <div className="space-y-2">
-                <p className="text-body3 text-cool-600 text-center">Where would you like to go?</p>
+                <p className="text-body3 text-cool-600 text-center">You're all set! Where would you like to go next?</p>
                 <button
                   onClick={() => { window.location.href = "/dv-pinnacle-v2/brand-safety"; }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-25 transition-colors text-left"
