@@ -1055,7 +1055,9 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
   const [unblockDecisions, setUnblockDecisions] = useState<Map<number, "unblock" | "keep">>(new Map());
   const [unblockResolved, setUnblockResolved] = useState(false);
   const [unblockExpanded, setUnblockExpanded] = useState(false);
-  // Step 6: Profile naming
+  // Step 6: DSP Connect
+  const [dspConnected, setDspConnected] = useState(false);
+  // Step 7: Profile naming
   const [profileName, setProfileName] = useState("Harbor Brew Zero — US Standard");
   const [profileNamed, setProfileNamed] = useState(false);
   const [profileNameExpanded, setProfileNameExpanded] = useState(false);
@@ -1105,6 +1107,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
       setProfileName("Harbor Brew Zero — US Standard");
       setProfileNamed(false);
       setProfileNameExpanded(false);
+      setDspConnected(false);
       setConnectedDsps([]);
       setDspFormPlatform("");
       setDspFormSeatId("");
@@ -1942,7 +1945,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                     <ShieldCheck className="h-4 w-4 text-turquoise-700" />
                     <span className="text-body3 font-semibold text-cool-900">Campaign KPI Validation</span>
                   </div>
-                  <p className="text-caption text-cool-500 mt-1">Industry: CPG — Beverages Sector</p>
+                  <p className="text-body3 text-cool-500 mt-1">Industry: CPG — Beverages Sector</p>
                 </div>
                 <div className="divide-y divide-neutral-100">
                   {kpiValues.map((kpi, kpiIdx) => (
@@ -1976,7 +1979,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                   <ShieldCheck className="h-4 w-4 text-turquoise-700" />
                   <span className="text-body3 font-semibold text-cool-900">Campaign KPI Validation</span>
                 </div>
-                <p className="text-caption text-cool-500 mt-1">Industry: CPG — Beverages Sector</p>
+                <p className="text-body3 text-cool-500 mt-1">Industry: CPG — Beverages Sector</p>
               </div>
               <div className="divide-y divide-neutral-100">
                 {kpiValues.map((kpi, kpiIdx) => (
@@ -2049,6 +2052,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                 <AlertTriangle className="h-4 w-4 text-orange-600" />
                 <span className="text-body3 font-semibold text-cool-900">Profile Inconsistencies</span>
               </div>
+              <p className="text-body3 text-cool-600">We found conflicting settings in your profile that may affect brand safety coverage.</p>
               {profileInconsistencies.map((issue) => (
                 <div key={issue.id} className={cn("rounded-lg border bg-white p-3", acceptedInconsistencies.has(issue.id) ? "border-grass-200" : "border-neutral-200")}>
                   <div className="flex items-center gap-2 mb-1.5">
@@ -2123,6 +2127,20 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
               </span>
               {unblockExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
             </button>
+          </div>
+        )}
+
+        {/* DSP Connected — compact resolved state */}
+        {isCampaignSetup && dspConnected && setupPhase !== "dsp-connect" && setupPhase !== "syncing" && (
+          <div className={cn("self-start", cardWidth)}>
+            <div className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-grass-50 border border-grass-200">
+              <div className="w-5 h-5 rounded-full bg-grass-500 flex items-center justify-center flex-shrink-0">
+                <Check className="h-3 w-3 text-white" />
+              </div>
+              <span className="text-body3 font-medium text-grass-700 flex-1 text-left">
+                Profile configuration complete. Your DSP has been connected.
+              </span>
+            </div>
           </div>
         )}
 
@@ -2279,20 +2297,20 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-body3 text-cool-600">Campaign Brief</span>
-                  <span className="text-body3 font-medium text-cool-900">{briefInputMethod === "crawl" ? `Crawled: ${websiteUrl}` : "Uploaded"}</span>
+                  <span className="text-body3 text-cool-600">Brand Intelligence</span>
+                  <span className="text-body3 font-medium text-grass-700">Approved</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-body3 text-cool-600">Topics Unblocked</span>
-                  <span className="text-body3 font-medium text-cool-900">{[...unblockDecisions.values()].filter(v => v === "unblock").length} via benchmarks</span>
+                  <span className="text-body3 text-cool-600">KPIs</span>
+                  <span className="text-body3 font-medium text-grass-700">Validated</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-body3 text-cool-600">Inconsistencies</span>
                   <span className="text-body3 font-medium text-grass-700">Resolved ({acceptedInconsistencies.size} accepted)</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-body3 text-cool-600">KPIs</span>
-                  <span className="text-body3 font-medium text-grass-700">Validated</span>
+                  <span className="text-body3 text-cool-600">Topics Unblocked</span>
+                  <span className="text-body3 font-medium text-cool-900">{[...unblockDecisions.values()].filter(v => v === "unblock").length} via benchmarks</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-body3 text-cool-600">DSP</span>
@@ -2401,6 +2419,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
               <button
                 onClick={() => {
                   setSyncedDspNames(connectedDsps.map(d => `${d.platformLabel}: ${d.seatId}`));
+                  setDspConnected(true);
                   setSetupPhase("syncing");
                   setTimeout(() => {
                     setSetupPhase("profile-naming");
