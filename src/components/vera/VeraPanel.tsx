@@ -1103,8 +1103,6 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
   useEffect(() => {
     if (isCampaignSetup && setupPhase === "brief-analyzing") {
       const timer = setTimeout(() => {
-        const veraMsg: Message = { id: `vera-bi-${Date.now()}`, role: "vera", content: "I've completed my analysis. Here's your Brand Intelligence Report. Please review and approve." };
-        setMessages(prev => [...prev, veraMsg]);
         setSetupPhase("brand-intelligence");
       }, 2000);
       return () => clearTimeout(timer);
@@ -1782,8 +1780,6 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                   };
                   setMessages(prev => [...prev, uploadMsg]);
                   setTimeout(() => {
-                    const veraMsg: Message = { id: `vera-analyzing-${Date.now()}`, role: "vera", content: "I've received your campaign brief. Let me analyze it and generate a Brand Intelligence Report..." };
-                    setMessages(prev => [...prev, veraMsg]);
                     setSetupPhase("brief-analyzing");
                   }, 600);
                 }}
@@ -1821,8 +1817,6 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                     setMessages(prev => [...prev, crawlMsg]);
                     if (!websiteUrl) setWebsiteUrl("harborbrewzero.com");
                     setTimeout(() => {
-                      const veraMsg: Message = { id: `vera-crawling-${Date.now()}`, role: "vera", content: `I'm crawling ${websiteUrl || "harborbrewzero.com"} now. Give me a moment to analyze your brand's digital presence...` };
-                      setMessages(prev => [...prev, veraMsg]);
                       setSetupPhase("brief-analyzing");
                     }, 600);
                   }}
@@ -1844,6 +1838,22 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
               {briefInputMethod === "crawl" ? `Crawling ${websiteUrl || "harborbrewzero.com"} and analyzing brand context...` : "Analyzing your campaign brief..."}
             </span>
           </div>
+        )}
+
+        {/* Inline Vera messages for brief analysis (rendered after compact cards) */}
+        {isCampaignSetup && briefUploaded && setupPhase !== "brief-input" && setupPhase !== "brief-analyzing" && (
+          <>
+            <div className={cn("self-start", expanded ? "max-w-[70%]" : "max-w-[92%]")}>
+              <div className="rounded-2xl rounded-bl-sm bg-neutral-50 text-cool-800 border border-neutral-100 px-4 py-3 text-body3">
+                I've received your campaign brief. Let me analyze it and generate a Brand Intelligence Report...
+              </div>
+            </div>
+            <div className={cn("self-start", expanded ? "max-w-[70%]" : "max-w-[92%]")}>
+              <div className="rounded-2xl rounded-bl-sm bg-neutral-50 text-cool-800 border border-neutral-100 px-4 py-3 text-body3">
+                I've completed my analysis. Here's your Brand Intelligence Report. Please review and approve.
+              </div>
+            </div>
+          </>
         )}
 
         {/* Phase 2: Brand Intelligence Report — compact approved state */}
