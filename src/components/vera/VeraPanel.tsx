@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Sparkles, Send, Globe, FileText, Loader2, ShieldCheck, Maximize2, Minimize2, Check, ChevronDown, ChevronRight, ExternalLink, Star, AlertTriangle, Zap, Plus, Upload, Copy } from "lucide-react";
+import { X, Sparkles, Send, Globe, FileText, Loader2, ShieldCheck, Maximize2, Minimize2, Check, ChevronDown, ChevronRight, ExternalLink, Star, AlertTriangle, Zap, Plus, Upload, Copy, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type VeraContext, useVeraContext } from "@/components/layout/AppLayout";
@@ -1009,6 +1009,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
   const [dspFormSeatId, setDspFormSeatId] = useState("");
   const [showDspForm, setShowDspForm] = useState(true);
   const [syncedDspNames, setSyncedDspNames] = useState<string[]>([]);
+  const [showFinalNav, setShowFinalNav] = useState(false);
 
   // Analyze flow state
   const [analyzePhase, setAnalyzePhase] = useState<AnalyzePhase>("thinking");
@@ -1096,6 +1097,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
       setDspFormSeatId("");
       setShowDspForm(true);
       setSyncedDspNames([]);
+      setShowFinalNav(false);
     } else {
       setMessages(initialMessages);
     }
@@ -2454,11 +2456,31 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
             </div>
 
             <button
-              onClick={() => { window.location.href = "/dv-pinnacle-v2/"; }}
+              onClick={() => setShowFinalNav(true)}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors"
             >
-              No, I'm all set — Go to Dashboard
+              I'm all set
             </button>
+
+            {showFinalNav && (
+              <div className="space-y-2">
+                <p className="text-body3 text-cool-600 text-center">Where would you like to go?</p>
+                <button
+                  onClick={() => { window.location.href = "/dv-pinnacle-v2/brand-safety"; }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-25 transition-colors text-left"
+                >
+                  <ShieldCheck className="h-4 w-4 text-plum-600 flex-shrink-0" />
+                  <span className="text-body3 font-medium text-cool-900">Brand Safety Dashboard</span>
+                </button>
+                <button
+                  onClick={() => { window.location.href = "/dv-pinnacle-v2/"; }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-25 transition-colors text-left"
+                >
+                  <BarChart3 className="h-4 w-4 text-plum-600 flex-shrink-0" />
+                  <span className="text-body3 font-medium text-cool-900">Campaign Health Dashboard</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 
