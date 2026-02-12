@@ -1638,7 +1638,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                 </div>
                 <div>
                   <p className="text-body3 font-medium text-cool-900">Start from an existing profile</p>
-                  <p className="text-caption text-cool-500 mt-0.5">Clone and customize one of your existing profiles</p>
+                  <p className="text-label text-cool-500 mt-0.5">Clone and customize one of your existing profiles</p>
                 </div>
               </div>
             </div>
@@ -1655,7 +1655,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                 </div>
                 <div>
                   <p className="text-body3 font-medium text-cool-900">Create a new profile</p>
-                  <p className="text-caption text-cool-500 mt-0.5">Start fresh with a campaign brief or website crawl</p>
+                  <p className="text-label text-cool-500 mt-0.5">Start fresh with a campaign brief or website crawl</p>
                 </div>
               </div>
             </div>
