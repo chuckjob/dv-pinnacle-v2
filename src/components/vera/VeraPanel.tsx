@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Sparkles, Send, Globe, FileText, Loader2, ShieldCheck, Maximize2, Minimize2, Check, ChevronDown, ChevronRight, ExternalLink, Star, AlertTriangle, Zap, Plus, Upload } from "lucide-react";
+import { X, Sparkles, Send, Globe, FileText, Loader2, ShieldCheck, Maximize2, Minimize2, Check, ChevronDown, ChevronRight, ExternalLink, Star, AlertTriangle, Zap, Plus, Upload, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type VeraContext, useVeraContext } from "@/components/layout/AppLayout";
+import { brandSafetyProfiles } from "@/data/mockData";
 
 interface Message {
   id: string;
@@ -313,23 +314,24 @@ interface ConnectedDsp {
 /* ========== CAMPAIGN SETUP WIZARD ========== */
 
 type CampaignSetupPhase =
-  | "brief-upload"
+  | "creation-mode"
+  | "existing-selection"
+  | "brief-input"
+  | "brief-analyzing"
   | "brand-intelligence"
   | "kpi-validation"
-  | "profile-naming"
-  | "profile-details"
-  | "profile-recommendation"
   | "inconsistency-check"
+  | "profile-naming"
   | "profile-review"
   | "dsp-connect"
   | "syncing"
-  | "complete";
+  | "final-touches";
 
 const campaignSetupInitialMessages: Message[] = [
   {
     id: "cs-1",
     role: "vera",
-    content: "Hi Robbin! I'll help you set up brand safety profiles for your new campaign. Start by uploading your campaign brief — I'll analyze it and recommend the best profile configuration.",
+    content: "Hi Robbin! I'll help you set up a new brand safety profile. Would you like to start from an existing profile or create a new one from scratch?",
   },
 ];
 
@@ -340,32 +342,55 @@ const campaignKpis = [
   { name: "Target Suitability", value: "> 93%", benchmark: "94%", status: "needs-review" as const },
 ];
 
-const profileInconsistencies = [
+interface InconsistencyItem {
+  id: number;
+  type: "mismatch" | "unblock-recommendation";
+  description: string;
+  severity: "high" | "medium" | "low";
+  recommendation: string;
+  topic?: string;
+  industryBenchmark?: string;
+  reachImpact?: string;
+}
+
+const profileInconsistencies: InconsistencyItem[] = [
   {
-    description: "Harbor Brew Zero — US Standard blocks 'Iran — Water Crisis' but ABS profile allows 'Environmental News'",
-    severity: "medium" as const,
-    recommendation: "Align both profiles to block 'Iran — Water Crisis' for consistency",
+    id: 0,
+    type: "mismatch",
+    description: "Current profile blocks 'Iran — Water Crisis' but allows 'Environmental News'",
+    severity: "medium",
+    recommendation: "Align categories to block 'Iran — Water Crisis' for consistency",
   },
   {
-    description: "Harbor Brew Zero — US Standard blocks 'election' keyword but ABS profile does not",
-    severity: "low" as const,
-    recommendation: "Consider adding 'election' to ABS keyword list",
+    id: 1,
+    type: "mismatch",
+    description: "Current profile blocks 'election' keyword broadly — may over-block benign election coverage",
+    severity: "low",
+    recommendation: "Narrow 'election' blocking to exclude educational content",
   },
 ];
 
-const recommendedProfiles = [
-  { id: "1", name: "Harbor Brew Zero US Performance — ABS", type: "abs" as const, campaigns: 4, match: 94 },
-  { id: "new", name: "Create New Profile", type: "abs" as const, campaigns: 0, match: 0 },
-];
-
-const profileTopics = [
-  { name: "Violence", enabled: true, impact: "high" as const },
-  { name: "Adult Content", enabled: true, impact: "high" as const },
-  { name: "Death & Injury", enabled: true, impact: "medium" as const },
-  { name: "Hate Speech", enabled: true, impact: "high" as const },
-  { name: "Drugs & Alcohol", enabled: true, impact: "medium" as const },
-  { name: "Political Content", enabled: false, impact: "low" as const },
-  { name: "Gambling", enabled: false, impact: "low" as const },
+const unblockRecommendationItems: InconsistencyItem[] = [
+  {
+    id: 10,
+    type: "unblock-recommendation",
+    topic: "Political Content",
+    description: "'Political Content' is blocked on your current profile, but 78% of CPG Beverage brands allow it.",
+    severity: "low",
+    recommendation: "Unblock 'Political Content' to gain ~4% more reach based on industry benchmarks",
+    industryBenchmark: "78% of CPG brands allow",
+    reachImpact: "+4.2%",
+  },
+  {
+    id: 11,
+    type: "unblock-recommendation",
+    topic: "Gambling",
+    description: "'Gambling' is blocked on your current profile, but 65% of CPG Beverage brands allow it.",
+    severity: "low",
+    recommendation: "Unblock 'Gambling' to gain ~2% more reach based on industry benchmarks",
+    industryBenchmark: "65% of CPG brands allow",
+    reachImpact: "+2.1%",
+  },
 ];
 
 /* ========== MAIN VERA PANEL ========== */
@@ -989,24 +1014,35 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
   const [analyzePhase, setAnalyzePhase] = useState<AnalyzePhase>("thinking");
 
   // Campaign setup state
-  const [setupPhase, setSetupPhase] = useState<CampaignSetupPhase>("brief-upload");
+  const [setupPhase, setSetupPhase] = useState<CampaignSetupPhase>("creation-mode");
+  // Step 1: Creation mode
+  const [creationMode, setCreationMode] = useState<"new" | "existing" | null>(null);
+  const [creationModeConfirmed, setCreationModeConfirmed] = useState(false);
+  const [creationModeExpanded, setCreationModeExpanded] = useState(false);
+  // Step 1b: Existing profile selection
+  const [selectedExistingProfileId, setSelectedExistingProfileId] = useState<string | null>(null);
+  const [existingProfileConfirmed, setExistingProfileConfirmed] = useState(false);
+  const [existingProfileExpanded, setExistingProfileExpanded] = useState(false);
+  // Step 2: Brief input
+  const [briefInputMethod, setBriefInputMethod] = useState<"upload" | "crawl">("upload");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [briefUploaded, setBriefUploaded] = useState(false);
+  const [briefExpanded, setBriefExpanded] = useState(false);
+  // Step 3: BI Report
   const [biApproved, setBiApproved] = useState(false);
   const [biExpanded, setBiExpanded] = useState(false);
+  // Step 4: KPIs
   const [kpisApproved, setKpisApproved] = useState(false);
   const [kpiExpanded, setKpiExpanded] = useState(false);
-  const [profileName, setProfileName] = useState("Harbor Brew Zero — US Standard");
-  const [profileNamed, setProfileNamed] = useState(false);
-  const [profileNameExpanded, setProfileNameExpanded] = useState(false);
-  const [topicsConfirmed, setTopicsConfirmed] = useState(false);
-  const [topicsExpanded, setTopicsExpanded] = useState(false);
-  const [selectedAbsProfile, setSelectedAbsProfile] = useState<string | null>(null);
-  const [absProfileConfirmed, setAbsProfileConfirmed] = useState(false);
-  const [absProfileExpanded, setAbsProfileExpanded] = useState(false);
+  // Step 5: Inconsistencies + unblock recs
   const [inconsistenciesResolved, setInconsistenciesResolved] = useState(false);
   const [inconsistenciesExpanded, setInconsistenciesExpanded] = useState(false);
   const [acceptedInconsistencies, setAcceptedInconsistencies] = useState<Set<number>>(new Set());
-  const [setupTopics, setSetupTopics] = useState(profileTopics.map(t => ({ ...t })));
+  const [unblockDecisions, setUnblockDecisions] = useState<Map<number, "unblock" | "keep">>(new Map());
+  // Step 6: Profile naming
+  const [profileName, setProfileName] = useState("Harbor Brew Zero — US Standard");
+  const [profileNamed, setProfileNamed] = useState(false);
+  const [profileNameExpanded, setProfileNameExpanded] = useState(false);
 
   // Derived
   const activeTierConfig = tierConfigs.find((t) => t.key === selectedTier)!;
@@ -1028,24 +1064,28 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
       setTimeout(() => setAnalyzePhase("insights"), 2500);
     } else if (context === "brand-safety-campaign-setup") {
       setMessages(campaignSetupInitialMessages);
-      setSetupPhase("brief-upload");
+      setSetupPhase("creation-mode");
+      setCreationMode(null);
+      setCreationModeConfirmed(false);
+      setCreationModeExpanded(false);
+      setSelectedExistingProfileId(null);
+      setExistingProfileConfirmed(false);
+      setExistingProfileExpanded(false);
+      setBriefInputMethod("upload");
+      setWebsiteUrl("");
       setBriefUploaded(false);
+      setBriefExpanded(false);
       setBiApproved(false);
       setBiExpanded(false);
       setKpisApproved(false);
       setKpiExpanded(false);
-      setProfileName("Harbor Brew Zero — US Standard");
-      setProfileNamed(false);
-      setProfileNameExpanded(false);
-      setTopicsConfirmed(false);
-      setTopicsExpanded(false);
-      setSelectedAbsProfile(null);
-      setAbsProfileConfirmed(false);
-      setAbsProfileExpanded(false);
       setInconsistenciesResolved(false);
       setInconsistenciesExpanded(false);
       setAcceptedInconsistencies(new Set());
-      setSetupTopics(profileTopics.map(t => ({ ...t })));
+      setUnblockDecisions(new Map());
+      setProfileName("Harbor Brew Zero — US Standard");
+      setProfileNamed(false);
+      setProfileNameExpanded(false);
       setConnectedDsps([]);
       setDspFormPlatform("");
       setDspFormSeatId("");
@@ -1058,7 +1098,19 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, wizardPhase]);
+  }, [messages, wizardPhase, setupPhase]);
+
+  // Auto-advance from brief-analyzing to brand-intelligence
+  useEffect(() => {
+    if (isCampaignSetup && setupPhase === "brief-analyzing") {
+      const timer = setTimeout(() => {
+        const veraMsg: Message = { id: `vera-bi-${Date.now()}`, role: "vera", content: "I've completed my analysis. Here's your Brand Intelligence Report. Please review and approve." };
+        setMessages(prev => [...prev, veraMsg]);
+        setSetupPhase("brand-intelligence");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [setupPhase, context]);
 
   // --- Handlers ---
 
@@ -1551,39 +1603,280 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
 
         {/* ===== CAMPAIGN SETUP WIZARD ===== */}
 
-        {/* Phase 1: Brief Upload */}
-        {isCampaignSetup && setupPhase === "brief-upload" && !briefUploaded && (
-          <div className={cn("space-y-3 self-start", cardWidth)}>
-            <div className="rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-25 p-6 text-center hover:border-plum-300 hover:bg-plum-25 transition-colors cursor-pointer"
-              onClick={() => {
-                setBriefUploaded(true);
-                const uploadMsg: Message = {
-                  id: `upload-${Date.now()}`,
-                  role: "user",
-                  content: "Q1 2026 Harbor Brew Zero Campaign Brief.pdf",
-                  type: "attachment",
-                };
-                setMessages(prev => [...prev, uploadMsg]);
-                setTimeout(() => {
-                  const veraMsg: Message = {
-                    id: `vera-analyzing-${Date.now()}`,
-                    role: "vera",
-                    content: "I've received your campaign brief. Let me analyze it and generate a Brand Intelligence Report...",
-                  };
-                  setMessages(prev => [...prev, veraMsg]);
-                  setTimeout(() => setSetupPhase("brand-intelligence"), 2000);
-                }, 600);
-              }}
+        {/* Step 1: Creation Mode — compact approved state */}
+        {isCampaignSetup && creationModeConfirmed && setupPhase !== "creation-mode" && (
+          <div className={cn("self-start space-y-2", cardWidth)}>
+            <button
+              onClick={() => setCreationModeExpanded(prev => !prev)}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-grass-50 border border-grass-200 hover:bg-grass-100 transition-colors"
             >
-              <div className="w-12 h-12 rounded-full bg-plum-50 flex items-center justify-center mx-auto mb-3">
-                <Upload className="h-5 w-5 text-plum-600" />
+              <div className="w-5 h-5 rounded-full bg-grass-500 flex items-center justify-center flex-shrink-0">
+                <Check className="h-3 w-3 text-white" />
               </div>
-              <p className="text-body3 font-medium text-cool-700">Upload Campaign Brief</p>
-              <p className="text-caption text-cool-500 mt-1">PDF, DOCX, or TXT — up to 10 MB</p>
-            </div>
-            <button className="w-full text-body3 text-cool-500 hover:text-cool-700 underline underline-offset-2 py-1">
-              Switch to manual configuration
+              <span className="text-body3 font-medium text-grass-700 flex-1 text-left">
+                {creationMode === "existing"
+                  ? `Starting from: ${brandSafetyProfiles.find(p => p.id === selectedExistingProfileId)?.name ?? "Existing profile"}`
+                  : "Creating new profile from scratch"}
+              </span>
+              {creationModeExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
             </button>
+          </div>
+        )}
+        {/* Step 1: Creation Mode — full view */}
+        {isCampaignSetup && setupPhase === "creation-mode" && (
+          <div className={cn("space-y-3 self-start", cardWidth)}>
+            <div
+              onClick={() => setCreationMode("existing")}
+              className={cn(
+                "rounded-xl border-2 p-4 cursor-pointer transition-all",
+                creationMode === "existing" ? "border-plum-400 bg-plum-25" : "border-neutral-200 bg-white hover:border-plum-200"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-plum-50 flex items-center justify-center flex-shrink-0">
+                  <Copy className="h-4 w-4 text-plum-600" />
+                </div>
+                <div>
+                  <p className="text-body3 font-medium text-cool-900">Start from an existing profile</p>
+                  <p className="text-caption text-cool-500 mt-0.5">Clone and customize one of your existing profiles</p>
+                </div>
+              </div>
+            </div>
+            <div
+              onClick={() => setCreationMode("new")}
+              className={cn(
+                "rounded-xl border-2 p-4 cursor-pointer transition-all",
+                creationMode === "new" ? "border-plum-400 bg-plum-25" : "border-neutral-200 bg-white hover:border-plum-200"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-plum-50 flex items-center justify-center flex-shrink-0">
+                  <Plus className="h-4 w-4 text-plum-600" />
+                </div>
+                <div>
+                  <p className="text-body3 font-medium text-cool-900">Create a new profile</p>
+                  <p className="text-caption text-cool-500 mt-0.5">Start fresh with a campaign brief or website crawl</p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (!creationMode) return;
+                if (creationMode === "existing") {
+                  setCreationModeConfirmed(true);
+                  const msg: Message = { id: `mode-${Date.now()}`, role: "user", content: "I'll start from an existing profile." };
+                  const veraMsg: Message = { id: `vera-existing-${Date.now()}`, role: "vera", content: "Which existing profile would you like to use as a starting point? I'll carry over its settings and customize them based on your campaign brief." };
+                  setMessages(prev => [...prev, msg, veraMsg]);
+                  setSetupPhase("existing-selection");
+                } else {
+                  setCreationModeConfirmed(true);
+                  const msg: Message = { id: `mode-${Date.now()}`, role: "user", content: "I'll create a new profile from scratch." };
+                  const veraMsg: Message = { id: `vera-brief-${Date.now()}`, role: "vera", content: "Let's get started. Upload your campaign brief or I can crawl your brand's website to gather intelligence." };
+                  setMessages(prev => [...prev, msg, veraMsg]);
+                  setSetupPhase("brief-input");
+                }
+              }}
+              disabled={!creationMode}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors disabled:bg-neutral-200 disabled:text-neutral-400"
+            >
+              Continue
+            </button>
+          </div>
+        )}
+
+        {/* Step 1b: Existing Profile Selection — compact approved state */}
+        {isCampaignSetup && existingProfileConfirmed && setupPhase !== "existing-selection" && (
+          <div className={cn("self-start space-y-2", cardWidth)}>
+            <button
+              onClick={() => setExistingProfileExpanded(prev => !prev)}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-grass-50 border border-grass-200 hover:bg-grass-100 transition-colors"
+            >
+              <div className="w-5 h-5 rounded-full bg-grass-500 flex items-center justify-center flex-shrink-0">
+                <Check className="h-3 w-3 text-white" />
+              </div>
+              <span className="text-body3 font-medium text-grass-700 flex-1 text-left">Based on: {brandSafetyProfiles.find(p => p.id === selectedExistingProfileId)?.name ?? "Selected profile"}</span>
+              {existingProfileExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
+            </button>
+          </div>
+        )}
+        {/* Step 1b: Existing Profile Selection — full view */}
+        {isCampaignSetup && setupPhase === "existing-selection" && (
+          <div className={cn("space-y-3 self-start", cardWidth)}>
+            <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-5 py-4 bg-gradient-to-r from-plum-50 to-white border-b border-neutral-100">
+                <span className="text-body3 font-semibold text-cool-900">Select Base Profile</span>
+                <p className="text-caption text-cool-500 mt-0.5">Choose a profile to use as your starting point</p>
+              </div>
+              <div className="px-5 py-4">
+                <select
+                  value={selectedExistingProfileId || ""}
+                  onChange={(e) => setSelectedExistingProfileId(e.target.value || null)}
+                  className="w-full h-10 px-3 text-body3 bg-white border border-neutral-200 rounded-lg outline-none focus:border-plum-300 focus:ring-2 focus:ring-plum-100 appearance-none cursor-pointer"
+                >
+                  <option value="">Select a profile...</option>
+                  {brandSafetyProfiles.filter(p => p.id !== "7").map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                {selectedExistingProfileId && (() => {
+                  const p = brandSafetyProfiles.find(pr => pr.id === selectedExistingProfileId);
+                  if (!p) return null;
+                  const riskStyles: Record<string, string> = { strict: "bg-grass-50 text-grass-700", moderate: "bg-orange-50 text-orange-700", permissive: "bg-tomato-50 text-tomato-700" };
+                  return (
+                    <div className="mt-3 rounded-lg border border-neutral-100 bg-neutral-25 p-3 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-body3 font-medium text-cool-900">{p.name}</span>
+                        <span className={cn("px-1.5 py-0.5 rounded text-label font-medium", riskStyles[p.riskLevel])}>{p.riskLevel.charAt(0).toUpperCase() + p.riskLevel.slice(1)}</span>
+                        <span className={cn("px-1.5 py-0.5 rounded text-label font-medium", p.status === "active" ? "bg-grass-50 text-grass-700" : p.status === "draft" ? "bg-orange-50 text-orange-700" : "bg-neutral-100 text-cool-500")}>{p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span>
+                      </div>
+                      <p className="text-caption text-cool-500">{p.categories.slice(0, 4).join(", ")}{p.categories.length > 4 ? ` +${p.categories.length - 4} more` : ""}</p>
+                      <div className="flex items-center gap-3 text-caption text-cool-500">
+                        <span>{p.campaignsUsing} campaigns</span>
+                        <span>·</span>
+                        <span>{p.keywordsBlocked} keywords</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                if (!selectedExistingProfileId) return;
+                setExistingProfileConfirmed(true);
+                const profileName = brandSafetyProfiles.find(p => p.id === selectedExistingProfileId)?.name ?? "selected profile";
+                const msg: Message = { id: `select-existing-${Date.now()}`, role: "user", content: `Use "${profileName}" as the starting point.` };
+                const veraMsg: Message = { id: `vera-brief-existing-${Date.now()}`, role: "vera", content: `I'll use "${profileName}" as your starting point. Now upload a brief or I can crawl your website.` };
+                setMessages(prev => [...prev, msg, veraMsg]);
+                setProfileName(`${profileName} — Copy`);
+                setSetupPhase("brief-input");
+              }}
+              disabled={!selectedExistingProfileId}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors disabled:bg-neutral-200 disabled:text-neutral-400"
+            >
+              Continue with this profile
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: Brief Input — compact approved state */}
+        {isCampaignSetup && briefUploaded && setupPhase !== "brief-input" && setupPhase !== "brief-analyzing" && (
+          <div className={cn("self-start space-y-2", cardWidth)}>
+            <button
+              onClick={() => setBriefExpanded(prev => !prev)}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-grass-50 border border-grass-200 hover:bg-grass-100 transition-colors"
+            >
+              <div className="w-5 h-5 rounded-full bg-grass-500 flex items-center justify-center flex-shrink-0">
+                <Check className="h-3 w-3 text-white" />
+              </div>
+              <span className="text-body3 font-medium text-grass-700 flex-1 text-left">
+                {briefInputMethod === "crawl" ? `Website crawled: ${websiteUrl}` : "Campaign brief uploaded"}
+              </span>
+              {briefExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
+            </button>
+          </div>
+        )}
+        {/* Step 2: Brief Input — full view */}
+        {isCampaignSetup && setupPhase === "brief-input" && (
+          <div className={cn("space-y-3 self-start", cardWidth)}>
+            {/* Tab toggle */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBriefInputMethod("upload")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-body3 font-medium transition-colors",
+                  briefInputMethod === "upload" ? "bg-plum-600 text-white" : "bg-white border border-neutral-200 text-cool-600 hover:bg-neutral-50"
+                )}
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Upload Brief
+              </button>
+              <button
+                onClick={() => setBriefInputMethod("crawl")}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-body3 font-medium transition-colors",
+                  briefInputMethod === "crawl" ? "bg-plum-600 text-white" : "bg-white border border-neutral-200 text-cool-600 hover:bg-neutral-50"
+                )}
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Crawl Website
+              </button>
+            </div>
+
+            {briefInputMethod === "upload" && (
+              <div
+                className="rounded-xl border-2 border-dashed border-neutral-300 bg-neutral-25 p-6 text-center hover:border-plum-300 hover:bg-plum-25 transition-colors cursor-pointer"
+                onClick={() => {
+                  setBriefUploaded(true);
+                  const uploadMsg: Message = {
+                    id: `upload-${Date.now()}`,
+                    role: "user",
+                    content: "Q1 2026 Harbor Brew Zero Campaign Brief.pdf",
+                    type: "attachment",
+                  };
+                  setMessages(prev => [...prev, uploadMsg]);
+                  setTimeout(() => {
+                    const veraMsg: Message = { id: `vera-analyzing-${Date.now()}`, role: "vera", content: "I've received your campaign brief. Let me analyze it and generate a Brand Intelligence Report..." };
+                    setMessages(prev => [...prev, veraMsg]);
+                    setSetupPhase("brief-analyzing");
+                  }, 600);
+                }}
+              >
+                <div className="w-12 h-12 rounded-full bg-plum-50 flex items-center justify-center mx-auto mb-3">
+                  <Upload className="h-5 w-5 text-plum-600" />
+                </div>
+                <p className="text-body3 font-medium text-cool-700">Upload Campaign Brief</p>
+                <p className="text-caption text-cool-500 mt-1">PDF, DOCX, or TXT — up to 10 MB</p>
+              </div>
+            )}
+
+            {briefInputMethod === "crawl" && (
+              <div className="rounded-xl border border-neutral-200 bg-white p-4 space-y-3">
+                <div>
+                  <label className="text-body3 font-medium text-cool-700 mb-1.5 block">Website URL</label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 flex items-center gap-2 h-10 px-3 bg-white border border-neutral-200 rounded-lg focus-within:border-plum-300 focus-within:ring-2 focus-within:ring-plum-100">
+                      <Globe className="h-3.5 w-3.5 text-cool-400 flex-shrink-0" />
+                      <input
+                        type="text"
+                        value={websiteUrl}
+                        onChange={(e) => setWebsiteUrl(e.target.value)}
+                        placeholder="e.g., https://harborbrewzero.com"
+                        className="flex-1 text-body3 outline-none bg-transparent"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-caption text-cool-500 mt-1.5">I'll analyze your website to understand your brand, products, and values.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setBriefUploaded(true);
+                    const crawlMsg: Message = { id: `crawl-${Date.now()}`, role: "user", content: `Crawl: ${websiteUrl || "harborbrewzero.com"}` };
+                    setMessages(prev => [...prev, crawlMsg]);
+                    if (!websiteUrl) setWebsiteUrl("harborbrewzero.com");
+                    setTimeout(() => {
+                      const veraMsg: Message = { id: `vera-crawling-${Date.now()}`, role: "vera", content: `I'm crawling ${websiteUrl || "harborbrewzero.com"} now. Give me a moment to analyze your brand's digital presence...` };
+                      setMessages(prev => [...prev, veraMsg]);
+                      setSetupPhase("brief-analyzing");
+                    }, 600);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors"
+                >
+                  <Globe className="h-4 w-4" />
+                  Start Crawl
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 2b: Brief Analyzing — transient */}
+        {isCampaignSetup && setupPhase === "brief-analyzing" && (
+          <div className={cn("flex items-center gap-2 self-start px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100 rounded-bl-sm", cardWidth)}>
+            <Loader2 className="h-4 w-4 text-plum-500 animate-spin" />
+            <span className="text-body3 text-cool-600">
+              {briefInputMethod === "crawl" ? `Crawling ${websiteUrl || "harborbrewzero.com"} and analyzing brand context...` : "Analyzing your campaign brief..."}
+            </span>
           </div>
         )}
 
@@ -1708,9 +2001,9 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
               onClick={() => {
                 setKpisApproved(true);
                 const msg: Message = { id: `approve-kpi-${Date.now()}`, role: "user", content: "KPIs look aligned. Continue." };
-                const veraMsg: Message = { id: `vera-naming-${Date.now()}`, role: "vera", content: "Great! Let's name your new profile before we configure it." };
+                const veraMsg: Message = { id: `vera-inconsistency-${Date.now()}`, role: "vera", content: "I've reviewed your profile configuration and found some areas to optimize. Some topics blocked on your previous profile could be safely unblocked based on industry benchmarks for CPG Beverages." };
                 setMessages(prev => [...prev, msg, veraMsg]);
-                setSetupPhase("profile-naming");
+                setSetupPhase("inconsistency-check");
               }}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors"
             >
@@ -1723,7 +2016,131 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
           </div>
         )}
 
-        {/* Phase 4: Profile Naming — compact approved state */}
+        {/* Inconsistency Check — compact resolved state */}
+        {isCampaignSetup && inconsistenciesResolved && setupPhase !== "inconsistency-check" && (
+          <div className={cn("self-start space-y-2", cardWidth)}>
+            <button
+              onClick={() => setInconsistenciesExpanded(prev => !prev)}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-grass-50 border border-grass-200 hover:bg-grass-100 transition-colors"
+            >
+              <div className="w-5 h-5 rounded-full bg-grass-500 flex items-center justify-center flex-shrink-0">
+                <Check className="h-3 w-3 text-white" />
+              </div>
+              <span className="text-body3 font-medium text-grass-700 flex-1 text-left">
+                Inconsistencies resolved ({acceptedInconsistencies.size} accepted) · {unblockDecisions.size > 0 ? `${[...unblockDecisions.values()].filter(v => v === "unblock").length} topics unblocked` : ""}
+              </span>
+              {inconsistenciesExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
+            </button>
+          </div>
+        )}
+        {/* Inconsistency Check — full view with unblock recommendations */}
+        {isCampaignSetup && setupPhase === "inconsistency-check" && (
+          <div className={cn("space-y-3 self-start", cardWidth)}>
+            {/* Section A: Mismatch Inconsistencies */}
+            <div className="rounded-xl border border-orange-200 bg-orange-25 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600" />
+                <span className="text-body3 font-semibold text-cool-900">Profile Inconsistencies</span>
+              </div>
+              {profileInconsistencies.map((issue) => (
+                <div key={issue.id} className={cn("rounded-lg border bg-white p-3", acceptedInconsistencies.has(issue.id) ? "border-grass-200" : "border-neutral-200")}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded text-label font-medium",
+                      acceptedInconsistencies.has(issue.id) ? "bg-grass-50 text-grass-700" : issue.severity === "medium" ? "bg-orange-50 text-orange-700" : "bg-neutral-50 text-cool-600"
+                    )}>
+                      {acceptedInconsistencies.has(issue.id) ? "Accepted" : issue.severity === "medium" ? "Medium" : "Low"}
+                    </span>
+                  </div>
+                  <p className="text-body3 text-cool-700 mb-1.5">{issue.description}</p>
+                  <p className="text-caption text-plum-600 italic">Recommendation: {issue.recommendation}</p>
+                  {!acceptedInconsistencies.has(issue.id) ? (
+                    <button
+                      onClick={() => setAcceptedInconsistencies(prev => new Set([...prev, issue.id]))}
+                      className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-plum-50 text-plum-700 text-body3 font-medium hover:bg-plum-100 transition-colors"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Accept recommendation
+                    </button>
+                  ) : (
+                    <div className="mt-2 flex items-center gap-1.5 text-body3 font-medium text-grass-600">
+                      <Check className="h-3.5 w-3.5" />
+                      Recommendation accepted
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Section B: Unblock Recommendations */}
+            <div className="rounded-xl border border-turquoise-100 bg-turquoise-25 p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-turquoise-600" />
+                <span className="text-body3 font-semibold text-cool-900">Topics to Consider Unblocking</span>
+              </div>
+              <p className="text-body3 text-cool-600">These topics were blocked on your previous profile but we recommend unblocking based on industry benchmarks.</p>
+              {unblockRecommendationItems.map((item) => {
+                const decision = unblockDecisions.get(item.id);
+                return (
+                  <div key={item.id} className={cn("rounded-lg border bg-white p-3", decision === "unblock" ? "border-grass-200" : decision === "keep" ? "border-neutral-200" : "border-neutral-200")}>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="text-body3 font-medium text-cool-900">{item.topic}</span>
+                      {!decision && (
+                        <span className="px-1.5 py-0.5 rounded bg-plum-50 text-plum-600 text-label font-medium">Currently Blocked</span>
+                      )}
+                      {decision === "unblock" && (
+                        <span className="px-1.5 py-0.5 rounded bg-grass-50 text-grass-700 text-label font-medium">Unblocked</span>
+                      )}
+                      {decision === "keep" && (
+                        <span className="px-1.5 py-0.5 rounded bg-neutral-100 text-cool-500 text-label font-medium">Kept Blocked</span>
+                      )}
+                    </div>
+                    <p className="text-body3 text-cool-700 mb-1.5">{item.description}</p>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-caption text-cool-500">{item.industryBenchmark}</span>
+                      <span className="text-caption font-medium text-grass-700">{item.reachImpact} estimated reach</span>
+                    </div>
+                    {!decision && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setUnblockDecisions(prev => new Map(prev).set(item.id, "unblock"))}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-grass-500 text-white text-body3 font-medium hover:bg-grass-600 transition-colors"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          Unblock
+                        </button>
+                        <button
+                          onClick={() => setUnblockDecisions(prev => new Map(prev).set(item.id, "keep"))}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-neutral-200 bg-white text-cool-700 text-body3 font-medium hover:bg-neutral-50 transition-colors"
+                        >
+                          Keep Blocked
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => {
+                setInconsistenciesResolved(true);
+                const accepted = acceptedInconsistencies.size;
+                const total = profileInconsistencies.length;
+                const unblocked = [...unblockDecisions.values()].filter(v => v === "unblock").length;
+                const msg: Message = { id: `resolve-inc-${Date.now()}`, role: "user", content: `Resolved ${accepted} inconsistencies, unblocked ${unblocked} topics. Continue.` };
+                const veraMsg: Message = { id: `vera-naming-${Date.now()}`, role: "vera", content: "Now let's give your profile a name." };
+                setMessages(prev => [...prev, msg, veraMsg]);
+                setSetupPhase("profile-naming");
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors"
+            >
+              Continue
+            </button>
+          </div>
+        )}
+
+        {/* Step 6: Profile Naming — compact approved state */}
         {isCampaignSetup && profileNamed && setupPhase !== "profile-naming" && (
           <div className={cn("self-start space-y-2", cardWidth)}>
             <button
@@ -1751,7 +2168,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
             )}
           </div>
         )}
-        {/* Phase 4: Profile Naming — full view */}
+        {/* Step 6: Profile Naming — full view */}
         {isCampaignSetup && setupPhase === "profile-naming" && (
           <div className={cn("space-y-3 self-start", cardWidth)}>
             <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
@@ -1774,309 +2191,19 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                 if (!profileName.trim()) return;
                 setProfileNamed(true);
                 const msg: Message = { id: `name-profile-${Date.now()}`, role: "user", content: `Name: ${profileName}` };
-                const veraMsg: Message = { id: `vera-topics-${Date.now()}`, role: "vera", content: `Here's the topic categories for "${profileName}". You can toggle topics on/off or relax settings based on the campaign brief.` };
+                const veraMsg: Message = { id: `vera-review-${Date.now()}`, role: "vera", content: "Here's your final profile summary. Review and approve to proceed." };
                 setMessages(prev => [...prev, msg, veraMsg]);
-                setSetupPhase("profile-details");
+                setSetupPhase("profile-review");
               }}
               disabled={!profileName.trim()}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors disabled:bg-neutral-200 disabled:text-neutral-400"
             >
               Continue
             </button>
-            <button className="w-full text-body3 text-cool-500 hover:text-cool-700 underline underline-offset-2 py-1">
-              Switch to manual configuration
-            </button>
           </div>
         )}
 
-        {/* Phase 5: Topics — compact approved state */}
-        {isCampaignSetup && topicsConfirmed && setupPhase !== "profile-details" && (
-          <div className={cn("self-start space-y-2", cardWidth)}>
-            <button
-              onClick={() => setTopicsExpanded(prev => !prev)}
-              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-grass-50 border border-grass-200 hover:bg-grass-100 transition-colors"
-            >
-              <div className="w-5 h-5 rounded-full bg-grass-500 flex items-center justify-center flex-shrink-0">
-                <Check className="h-3 w-3 text-white" />
-              </div>
-              <span className="text-body3 font-medium text-grass-700 flex-1 text-left">Topics configured ({setupTopics.filter(t => t.enabled).length} of {setupTopics.length} blocked)</span>
-              {topicsExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
-            </button>
-            {topicsExpanded && (
-              <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
-                <div className="divide-y divide-neutral-100">
-                  {setupTopics.map((topic) => (
-                    <div key={topic.name} className="px-5 py-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "w-2 h-2 rounded-full",
-                          topic.impact === "high" ? "bg-tomato-500" : topic.impact === "medium" ? "bg-orange-500" : "bg-neutral-300"
-                        )} />
-                        <span className="text-body3 text-cool-800">{topic.name}</span>
-                      </div>
-                      <span className={cn("text-caption font-medium", topic.enabled ? "text-plum-600" : "text-cool-400")}>
-                        {topic.enabled ? "Blocked" : "Allowed"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        {/* Phase 5: Profile Details (Topics view) — full view */}
-        {isCampaignSetup && setupPhase === "profile-details" && (
-          <div className={cn("space-y-3 self-start", cardWidth)}>
-            <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
-              <div className="px-5 py-4 bg-gradient-to-r from-plum-50 to-white border-b border-neutral-100">
-                <span className="text-body3 font-semibold text-cool-900">Profile Topics & Categories</span>
-                <p className="text-caption text-cool-500 mt-0.5">Toggle topics to adjust blocking scope</p>
-              </div>
-              <div className="divide-y divide-neutral-100">
-                {setupTopics.map((topic, i) => (
-                  <div key={topic.name} className="px-5 py-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "w-2 h-2 rounded-full",
-                        topic.impact === "high" ? "bg-tomato-500" : topic.impact === "medium" ? "bg-orange-500" : "bg-neutral-300"
-                      )} />
-                      <span className="text-body3 text-cool-800">{topic.name}</span>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const updated = [...setupTopics];
-                        updated[i] = { ...updated[i], enabled: !updated[i].enabled };
-                        setSetupTopics(updated);
-                      }}
-                      className={cn(
-                        "w-10 h-5 rounded-full transition-colors relative",
-                        topic.enabled ? "bg-plum-500" : "bg-neutral-300"
-                      )}
-                    >
-                      <span className={cn(
-                        "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all",
-                        topic.enabled ? "left-5" : "left-0.5"
-                      )} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="px-5 py-3 bg-neutral-25 border-t border-neutral-100">
-                <p className="text-caption text-cool-500">
-                  {setupTopics.filter(t => t.enabled).length} of {setupTopics.length} topics blocked
-                  {" · "}
-                  <button className="text-plum-600 hover:text-plum-700 font-medium underline underline-offset-2">
-                    View keyword list
-                  </button>
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setTopicsConfirmed(true);
-                const msg: Message = { id: `details-done-${Date.now()}`, role: "user", content: "Topic configuration looks good." };
-                const veraMsg: Message = { id: `vera-abs-${Date.now()}`, role: "vera", content: "Now let's select an ABS profile to pair with your brand safety configuration." };
-                setMessages(prev => [...prev, msg, veraMsg]);
-                setSetupPhase("profile-recommendation");
-              }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors"
-            >
-              Continue
-            </button>
-            <button className="w-full text-body3 text-cool-500 hover:text-cool-700 underline underline-offset-2 py-1">
-              Switch to manual configuration
-            </button>
-          </div>
-        )}
-
-        {/* Phase 6: ABS Profile — compact approved state */}
-        {isCampaignSetup && absProfileConfirmed && setupPhase !== "profile-recommendation" && (
-          <div className={cn("self-start space-y-2", cardWidth)}>
-            <button
-              onClick={() => setAbsProfileExpanded(prev => !prev)}
-              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-grass-50 border border-grass-200 hover:bg-grass-100 transition-colors"
-            >
-              <div className="w-5 h-5 rounded-full bg-grass-500 flex items-center justify-center flex-shrink-0">
-                <Check className="h-3 w-3 text-white" />
-              </div>
-              <span className="text-body3 font-medium text-grass-700 flex-1 text-left">ABS Profile: {recommendedProfiles.find(p => p.id === selectedAbsProfile)?.name ?? "Selected"}</span>
-              {absProfileExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
-            </button>
-            {absProfileExpanded && (
-              <div className="space-y-2">
-                {recommendedProfiles.map((p) => (
-                  <div
-                    key={p.id}
-                    className={cn(
-                      "rounded-xl border-2 p-4",
-                      selectedAbsProfile === p.id ? "border-plum-400 bg-plum-25" : "border-neutral-200 bg-white opacity-50"
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-body3 font-medium text-cool-900">{p.name}</span>
-                      {p.match > 0 && (
-                        <span className="text-label font-medium text-plum-600">{p.match}% match</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-caption text-cool-500">
-                      <span className="px-1.5 py-0.5 rounded bg-turquoise-25 text-turquoise-700 border border-turquoise-100 text-label font-medium">ABS</span>
-                      {p.campaigns > 0 ? (
-                        <span>{p.campaigns} active campaigns</span>
-                      ) : (
-                        <span className="text-orange-600">No active campaigns</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        {/* Phase 6: ABS Profile Selection — full view */}
-        {isCampaignSetup && setupPhase === "profile-recommendation" && (
-          <div className={cn("space-y-4 self-start", cardWidth)}>
-            <div>
-              <p className="text-body3 font-semibold text-cool-900 mb-2">Select ABS Profile</p>
-              <div className="space-y-2">
-                {recommendedProfiles.map((p) => (
-                  <div
-                    key={p.id}
-                    onClick={() => setSelectedAbsProfile(p.id)}
-                    className={cn(
-                      "rounded-xl border-2 p-4 cursor-pointer transition-all",
-                      selectedAbsProfile === p.id ? "border-plum-400 bg-plum-25" : "border-neutral-200 bg-white hover:border-plum-200"
-                    )}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-body3 font-medium text-cool-900">{p.name}</span>
-                      {p.match > 0 && (
-                        <span className="text-label font-medium text-plum-600">{p.match}% match</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-caption text-cool-500">
-                      <span className="px-1.5 py-0.5 rounded bg-turquoise-25 text-turquoise-700 border border-turquoise-100 text-label font-medium">ABS</span>
-                      {p.campaigns > 0 ? (
-                        <span>{p.campaigns} active campaigns</span>
-                      ) : (
-                        <span className="text-orange-600">No active campaigns</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                if (!selectedAbsProfile) return;
-                setAbsProfileConfirmed(true);
-                const msg: Message = { id: `select-profiles-${Date.now()}`, role: "user", content: "Selected ABS profile. Continue." };
-                const veraMsg: Message = { id: `vera-inconsistency-${Date.now()}`, role: "vera", content: "I've reviewed your profile configuration and found a couple of inconsistencies that may affect campaign performance." };
-                setMessages(prev => [...prev, msg, veraMsg]);
-                setSetupPhase("inconsistency-check");
-              }}
-              disabled={!selectedAbsProfile}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors disabled:bg-neutral-200 disabled:text-neutral-400"
-            >
-              Continue with Selected Profile
-            </button>
-            <button className="w-full text-body3 text-cool-500 hover:text-cool-700 underline underline-offset-2 py-1">
-              Switch to manual configuration
-            </button>
-          </div>
-        )}
-
-        {/* Inconsistency Check — compact resolved state */}
-        {isCampaignSetup && inconsistenciesResolved && setupPhase !== "inconsistency-check" && (
-          <div className={cn("self-start space-y-2", cardWidth)}>
-            <button
-              onClick={() => setInconsistenciesExpanded(prev => !prev)}
-              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-grass-50 border border-grass-200 hover:bg-grass-100 transition-colors"
-            >
-              <div className="w-5 h-5 rounded-full bg-grass-500 flex items-center justify-center flex-shrink-0">
-                <Check className="h-3 w-3 text-white" />
-              </div>
-              <span className="text-body3 font-medium text-grass-700 flex-1 text-left">Inconsistencies resolved ({acceptedInconsistencies.size} of {profileInconsistencies.length} accepted)</span>
-              {inconsistenciesExpanded ? <ChevronDown className="h-3.5 w-3.5 text-grass-500" /> : <ChevronRight className="h-3.5 w-3.5 text-grass-500" />}
-            </button>
-            {inconsistenciesExpanded && (
-              <div className="rounded-xl border border-orange-200 bg-orange-25 p-4 space-y-3">
-                {profileInconsistencies.map((issue, i) => (
-                  <div key={i} className={cn("rounded-lg border bg-white p-3", acceptedInconsistencies.has(i) ? "border-grass-200" : "border-neutral-200")}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={cn(
-                        "px-1.5 py-0.5 rounded text-label font-medium",
-                        acceptedInconsistencies.has(i) ? "bg-grass-50 text-grass-700" : issue.severity === "medium" ? "bg-orange-50 text-orange-700" : "bg-neutral-50 text-cool-600"
-                      )}>
-                        {acceptedInconsistencies.has(i) ? "Accepted" : issue.severity === "medium" ? "Medium" : "Low"}
-                      </span>
-                    </div>
-                    <p className="text-body3 text-cool-700 mb-1.5">{issue.description}</p>
-                    <p className="text-caption text-plum-600 italic">Recommendation: {issue.recommendation}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        {/* Inconsistency Check — full view */}
-        {isCampaignSetup && setupPhase === "inconsistency-check" && (
-          <div className={cn("space-y-3 self-start", cardWidth)}>
-            <div className="rounded-xl border border-orange-200 bg-orange-25 p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
-                <span className="text-body3 font-semibold text-cool-900">Profile Inconsistencies</span>
-              </div>
-              {profileInconsistencies.map((issue, i) => (
-                <div key={i} className={cn("rounded-lg border bg-white p-3", acceptedInconsistencies.has(i) ? "border-grass-200" : "border-neutral-200")}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={cn(
-                      "px-1.5 py-0.5 rounded text-label font-medium",
-                      acceptedInconsistencies.has(i) ? "bg-grass-50 text-grass-700" : issue.severity === "medium" ? "bg-orange-50 text-orange-700" : "bg-neutral-50 text-cool-600"
-                    )}>
-                      {acceptedInconsistencies.has(i) ? "Accepted" : issue.severity === "medium" ? "Medium" : "Low"}
-                    </span>
-                  </div>
-                  <p className="text-body3 text-cool-700 mb-1.5">{issue.description}</p>
-                  <p className="text-caption text-plum-600 italic">Recommendation: {issue.recommendation}</p>
-                  {!acceptedInconsistencies.has(i) ? (
-                    <button
-                      onClick={() => setAcceptedInconsistencies(prev => new Set([...prev, i]))}
-                      className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-plum-50 text-plum-700 text-body3 font-medium hover:bg-plum-100 transition-colors"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      Accept recommendation
-                    </button>
-                  ) : (
-                    <div className="mt-2 flex items-center gap-1.5 text-body3 font-medium text-grass-600">
-                      <Check className="h-3.5 w-3.5" />
-                      Recommendation accepted
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => {
-                setInconsistenciesResolved(true);
-                const accepted = acceptedInconsistencies.size;
-                const total = profileInconsistencies.length;
-                const msg: Message = { id: `resolve-inc-${Date.now()}`, role: "user", content: `Resolved inconsistencies (${accepted} of ${total} recommendations accepted). Continue.` };
-                const veraMsg: Message = { id: `vera-review-${Date.now()}`, role: "vera", content: "Here's a final summary of your profile configuration. Review and approve to proceed." };
-                setMessages(prev => [...prev, msg, veraMsg]);
-                setSetupPhase("profile-review");
-              }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors"
-            >
-              Continue
-            </button>
-            <button className="w-full text-body3 text-cool-500 hover:text-cool-700 underline underline-offset-2 py-1">
-              Switch to manual configuration
-            </button>
-          </div>
-        )}
-
-        {/* Phase 7: Profile Review */}
+        {/* Step 7: Profile Review */}
         {isCampaignSetup && setupPhase === "profile-review" && (
           <div className={cn("space-y-3 self-start", cardWidth)}>
             <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
@@ -2091,17 +2218,23 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                   <span className="text-body3 text-cool-600">Profile Name</span>
                   <span className="text-body3 font-medium text-cool-900">{profileName}</span>
                 </div>
+                {creationMode === "existing" && selectedExistingProfileId && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-body3 text-cool-600">Based On</span>
+                    <span className="text-body3 font-medium text-cool-900">{brandSafetyProfiles.find(p => p.id === selectedExistingProfileId)?.name ?? "—"}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
-                  <span className="text-body3 text-cool-600">ABS Profile</span>
-                  <span className="text-body3 font-medium text-cool-900">{recommendedProfiles.find(p => p.id === selectedAbsProfile)?.name ?? "—"}</span>
+                  <span className="text-body3 text-cool-600">Campaign Brief</span>
+                  <span className="text-body3 font-medium text-cool-900">{briefInputMethod === "crawl" ? `Crawled: ${websiteUrl}` : "Uploaded"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-body3 text-cool-600">Topics Blocked</span>
-                  <span className="text-body3 font-medium text-cool-900">{setupTopics.filter(t => t.enabled).length} of {setupTopics.length}</span>
+                  <span className="text-body3 text-cool-600">Topics Unblocked</span>
+                  <span className="text-body3 font-medium text-cool-900">{[...unblockDecisions.values()].filter(v => v === "unblock").length} via benchmarks</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-body3 text-cool-600">Inconsistencies</span>
-                  <span className="text-body3 font-medium text-grass-700">Resolved</span>
+                  <span className="text-body3 font-medium text-grass-700">Resolved ({acceptedInconsistencies.size} accepted)</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-body3 text-cool-600">KPIs</span>
@@ -2112,7 +2245,7 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
             <button
               onClick={() => {
                 const msg: Message = { id: `approve-review-${Date.now()}`, role: "user", content: "Approved. Let's connect the DSP." };
-                const veraMsg: Message = { id: `vera-dsp-${Date.now()}`, role: "vera", content: "Your profiles are approved. Now let's connect your DSP so the ABS profile can optimize campaign performance. Select your platform and enter your seat ID below." };
+                const veraMsg: Message = { id: `vera-dsp-${Date.now()}`, role: "vera", content: "Profile approved! Let's connect your DSP so the profile can start optimizing campaign performance." };
                 setMessages(prev => [...prev, msg, veraMsg]);
                 setSetupPhase("dsp-connect");
               }}
@@ -2197,8 +2330,10 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
                   setSyncedDspNames(connectedDsps.map(d => `${d.platformLabel}: ${d.seatId}`));
                   setSetupPhase("syncing");
                   setTimeout(() => {
-                    setSetupPhase("complete");
+                    setSetupPhase("final-touches");
                     setProfileCreated(true);
+                    const veraMsg: Message = { id: `vera-final-${Date.now()}`, role: "vera", content: "Your profile is live! Would you like to add any final customizations before we wrap up?" };
+                    setMessages(prev => [...prev, veraMsg]);
                   }, 2500);
                 }}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors"
@@ -2210,8 +2345,10 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
             <button
               onClick={() => {
                 setSyncedDspNames([]);
-                setSetupPhase("complete");
+                setSetupPhase("final-touches");
                 setProfileCreated(true);
+                const veraMsg: Message = { id: `vera-final-${Date.now()}`, role: "vera", content: "Your profile is live! Would you like to add any final customizations before we wrap up?" };
+                setMessages(prev => [...prev, veraMsg]);
               }}
               className="text-body3 text-cool-500 hover:text-cool-700 underline underline-offset-2 py-1 w-full text-center"
             >
@@ -2220,23 +2357,23 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
           </div>
         )}
 
-        {/* Phase 9: Syncing */}
+        {/* Step 8b: Syncing */}
         {isCampaignSetup && setupPhase === "syncing" && (
           <div className={cn("space-y-3 self-start", cardWidth)}>
             <CollapsedSectionSummary
               icon={<ShieldCheck className="h-4 w-4 text-plum-600" />}
               title="Profile Configuration"
-              subtitle="ABS + Brand Safety profiles approved"
+              subtitle="Profile approved and ready"
             />
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-neutral-50 border border-neutral-100">
               <Loader2 className="h-4 w-4 text-plum-500 animate-spin" />
-              <span className="text-body3 text-cool-600">Syncing profiles to {connectedDsps.length} DSP seat{connectedDsps.length !== 1 ? "s" : ""}...</span>
+              <span className="text-body3 text-cool-600">Syncing profile to {connectedDsps.length} DSP seat{connectedDsps.length !== 1 ? "s" : ""}...</span>
             </div>
           </div>
         )}
 
-        {/* Phase 10: Complete */}
-        {isCampaignSetup && setupPhase === "complete" && (
+        {/* Step 9: Final Touches */}
+        {isCampaignSetup && setupPhase === "final-touches" && (
           <div className={cn("self-start space-y-3", cardWidth)}>
             {/* Success banner */}
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-grass-200 bg-grass-50">
@@ -2245,10 +2382,10 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
               </div>
               <div>
                 <p className="text-body3 font-medium text-grass-700">
-                  {syncedDspNames.length > 0 ? "Campaign Setup Complete! Profiles synced." : "Campaign Setup Complete! Profiles created."}
+                  {syncedDspNames.length > 0 ? "Campaign Setup Complete! Profile synced." : "Campaign Setup Complete! Profile created."}
                 </p>
                 <p className="text-body3 text-cool-600 mt-0.5">
-                  ABS + Brand Safety profiles are active for {profileName}
+                  Brand safety profile is active for {profileName}
                 </p>
               </div>
             </div>
@@ -2296,10 +2433,10 @@ export function VeraPanel({ open, onClose, context = "general" }: VeraPanelProps
             </div>
 
             <button
-              onClick={() => { window.location.href = "/"; }}
+              onClick={() => { window.location.href = "/dv-pinnacle-v2/"; }}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-plum-600 text-white text-body3 font-medium hover:bg-plum-700 transition-colors"
             >
-              Go to Campaign Dashboard
+              No, I'm all set — Go to Dashboard
             </button>
           </div>
         )}
