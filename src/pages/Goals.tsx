@@ -42,7 +42,7 @@ export default function Goals() {
     : allGoals.filter(g => g.healthStatus === statusFilter);
 
   return (
-    <div>
+    <div className="min-w-0">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
         <div>

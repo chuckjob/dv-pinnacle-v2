@@ -73,7 +73,7 @@ export default function Overview() {
   const activeGoals = mockGoals.filter(g => g.status === 'active');
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-6">
         <h1 className="text-h4 text-cool-900">Overview</h1>
         <p className="text-body3 text-cool-500 mt-0.5">Cross-goal performance at a glance</p>

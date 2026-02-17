@@ -108,7 +108,7 @@ export default function GoalDetail() {
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between">

@@ -36,8 +36,8 @@ export function CampaignTreeTable({ campaigns, goalId, onNavigate }: CampaignTre
   };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
+    <div className="overflow-x-auto max-w-full">
+      <table className="w-full min-w-[900px]">
         <thead>
           <tr className="border-b border-neutral-100 bg-neutral-25">
             <th className="px-4 py-3 text-label font-semibold text-cool-600 text-left">Name</th>
