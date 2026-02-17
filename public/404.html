@@ -5,16 +5,18 @@
     <title>Redirecting…</title>
     <script>
       // GitHub Pages SPA redirect
-      // Stores the current path in sessionStorage and redirects to the base URL.
-      // The index.html script picks it up and restores the route via history.replaceState.
-      var pathSegmentsToKeep = 1; // keep /dv-pinnacle-v2/
+      // Stores the full URL (path + query + hash) in sessionStorage and
+      // redirects to the base URL. index.html restores the route via replaceState.
+      var pathSegmentsToKeep = 1; // keep /dv-pinnacle-v3/
       var l = window.location;
       sessionStorage.redirect =
         l.protocol +
         '//' +
         l.hostname +
         (l.port ? ':' + l.port : '') +
-        l.pathname;
+        l.pathname +
+        l.search +
+        l.hash;
       l.replace(
         l.protocol +
           '//' +
