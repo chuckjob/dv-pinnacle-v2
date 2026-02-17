@@ -9,17 +9,23 @@ export function Breadcrumbs() {
   const location = useLocation();
   const params = useParams();
   const navigate = useNavigate();
-  const { goalCreated, goalConnectedDspLabel, refreshedGoalIds } = useVera();
+  const { goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, goalName: contextGoalName, refreshedGoalIds } = useVera();
 
   // Build combined goals list including Vera-created goal
   // (must be above early return to satisfy Rules of Hooks)
   const allGoals = useMemo(() => {
     if (!goalCreated) return mockGoals;
+    const wizardOverrides = {
+      connectedDsp: goalConnectedDspLabel || undefined,
+      ...(goalPlatform ? { platform: goalPlatform, platforms: [goalPlatform] } : {}),
+      ...(goalMediaType ? { mediaType: goalMediaType } : {}),
+      ...(contextGoalName ? { name: contextGoalName } : {}),
+    } as const;
     const goal5Data = refreshedGoalIds.has('goal-5')
-      ? { ...refreshedGoal5, connectedDsp: goalConnectedDspLabel || undefined }
-      : { ...newGoal5, connectedDsp: goalConnectedDspLabel || undefined };
+      ? { ...refreshedGoal5, ...wizardOverrides }
+      : { ...newGoal5, ...wizardOverrides };
     return [goal5Data, ...mockGoals];
-  }, [goalCreated, goalConnectedDspLabel, refreshedGoalIds]);
+  }, [goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, contextGoalName, refreshedGoalIds]);
 
   // Only show breadcrumbs for nested goal/campaign pages
   if (!location.pathname.startsWith('/goals') || !params.goalId) return null;

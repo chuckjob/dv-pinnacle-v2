@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import type { Platform, MediaType } from '@/types/goal';
 
 export type VeraPanelContext = 'general' | 'goal-create' | 'campaign-analyze';
 
@@ -13,6 +14,12 @@ interface VeraContextValue {
   setGoalCreated: (v: boolean) => void;
   goalConnectedDspLabel: string;
   setGoalConnectedDspLabel: (v: string) => void;
+  goalPlatform: Platform | '';
+  setGoalPlatform: (v: Platform | '') => void;
+  goalMediaType: MediaType | '';
+  setGoalMediaType: (v: MediaType | '') => void;
+  goalName: string;
+  setGoalName: (v: string) => void;
   refreshedGoalIds: Set<string>;
   addRefreshedGoalId: (id: string) => void;
   appliedRecIds: Set<number>;
@@ -26,6 +33,9 @@ export function VeraProvider({ children }: { children: ReactNode }) {
   const [veraContext, setVeraContext] = useState<VeraPanelContext>('general');
   const [goalCreated, setGoalCreated] = useState(false);
   const [goalConnectedDspLabel, setGoalConnectedDspLabel] = useState('');
+  const [goalPlatform, setGoalPlatform] = useState<Platform | ''>('');
+  const [goalMediaType, setGoalMediaType] = useState<MediaType | ''>('');
+  const [goalName, setGoalName] = useState('');
   const [refreshedGoalIds, setRefreshedGoalIds] = useState<Set<string>>(new Set());
   const [appliedRecIds, setAppliedRecIds] = useState<Set<number>>(new Set());
 
@@ -55,6 +65,12 @@ export function VeraProvider({ children }: { children: ReactNode }) {
         setGoalCreated,
         goalConnectedDspLabel,
         setGoalConnectedDspLabel,
+        goalPlatform,
+        setGoalPlatform,
+        goalMediaType,
+        setGoalMediaType,
+        goalName,
+        setGoalName,
         refreshedGoalIds,
         addRefreshedGoalId,
         appliedRecIds,

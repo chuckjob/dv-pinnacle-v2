@@ -14,16 +14,22 @@ import { AdSetExplorer } from '@/components/campaign/AdSetExplorer';
 
 export default function CampaignDetail() {
   const { goalId, campaignId } = useParams();
-  const { goalCreated, goalConnectedDspLabel, refreshedGoalIds, openVeraWithContext, appliedRecIds } = useVera();
+  const { goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, goalName: contextGoalName, refreshedGoalIds, openVeraWithContext, appliedRecIds } = useVera();
 
   // Build combined goals list including Vera-created goal
   const allGoals = useMemo(() => {
     if (!goalCreated) return mockGoals;
+    const wizardOverrides = {
+      connectedDsp: goalConnectedDspLabel || undefined,
+      ...(goalPlatform ? { platform: goalPlatform, platforms: [goalPlatform] } : {}),
+      ...(goalMediaType ? { mediaType: goalMediaType } : {}),
+      ...(contextGoalName ? { name: contextGoalName } : {}),
+    } as const;
     const goal5Data = refreshedGoalIds.has('goal-5')
-      ? { ...refreshedGoal5, connectedDsp: goalConnectedDspLabel || undefined }
-      : { ...newGoal5, connectedDsp: goalConnectedDspLabel || undefined };
+      ? { ...refreshedGoal5, ...wizardOverrides }
+      : { ...newGoal5, ...wizardOverrides };
     return [goal5Data, ...mockGoals];
-  }, [goalCreated, goalConnectedDspLabel, refreshedGoalIds]);
+  }, [goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, contextGoalName, refreshedGoalIds]);
 
   // Find campaign: first try via goalId param, then search all goals, then unassigned
   const { goal, campaign } = useMemo(() => {

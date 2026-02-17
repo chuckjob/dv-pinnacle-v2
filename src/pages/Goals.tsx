@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, ChevronDown, Sparkles, Target } from 'lucide-react';
 import { mockGoals, newGoal5, refreshedGoal5 } from '@/data/mock-goals';
 import { GoalCard } from '@/components/goals/GoalCard';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { PlatformBadge } from '@/components/shared/PlatformBadge';
 import { cn } from '@/lib/utils';
 import { useVera } from '@/hooks/use-vera';
-import type { HealthStatus } from '@/types/goal';
+import { platformConfigs } from '@/types/platform';
+import type { HealthStatus, Platform } from '@/types/goal';
 
-const filters: { label: string; value: HealthStatus | 'all' }[] = [
+const healthFilters: { label: string; value: HealthStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
   { label: 'On Track', value: 'on-track' },
   { label: 'At Risk', value: 'at-risk' },
@@ -17,8 +19,16 @@ const filters: { label: string; value: HealthStatus | 'all' }[] = [
 
 export default function Goals() {
   const navigate = useNavigate();
-  const { openVeraWithContext, goalCreated, goalConnectedDspLabel, refreshedGoalIds, addRefreshedGoalId, veraOpen } = useVera();
-  const [statusFilter, setStatusFilter] = useState<HealthStatus | 'all'>('all');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { openVeraWithContext, goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, goalName: contextGoalName, refreshedGoalIds, addRefreshedGoalId, veraOpen } = useVera();
+
+  // Read initial filter state from URL search params
+  const [statusFilter, setStatusFilter] = useState<HealthStatus | 'all'>(
+    () => (searchParams.get('status') as HealthStatus) || 'all'
+  );
+  const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>(
+    () => (searchParams.get('platform') as Platform) || 'all'
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const createRef = useRef<HTMLDivElement>(null);
 
@@ -32,14 +42,43 @@ export default function Goals() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  const wizardOverrides = {
+    connectedDsp: goalConnectedDspLabel || undefined,
+    ...(goalPlatform ? { platform: goalPlatform, platforms: [goalPlatform] } : {}),
+    ...(goalMediaType ? { mediaType: goalMediaType } : {}),
+    ...(contextGoalName ? { name: contextGoalName } : {}),
+  } as const;
   const goal5Data = refreshedGoalIds.has('goal-5')
-    ? { ...refreshedGoal5, connectedDsp: goalConnectedDspLabel || undefined }
-    : { ...newGoal5, connectedDsp: goalConnectedDspLabel || undefined };
+    ? { ...refreshedGoal5, ...wizardOverrides }
+    : { ...newGoal5, ...wizardOverrides };
   const allGoals = goalCreated ? [goal5Data, ...mockGoals] : mockGoals;
 
-  const filtered = statusFilter === 'all'
-    ? allGoals
-    : allGoals.filter(g => g.healthStatus === statusFilter);
+  // Sync filters to URL params
+  const updateFilters = (status: HealthStatus | 'all', platform: Platform | 'all') => {
+    const params = new URLSearchParams();
+    if (status !== 'all') params.set('status', status);
+    if (platform !== 'all') params.set('platform', platform);
+    setSearchParams(params, { replace: true });
+  };
+
+  const handleStatusFilter = (v: HealthStatus | 'all') => {
+    setStatusFilter(v);
+    updateFilters(v, platformFilter);
+  };
+
+  const handlePlatformFilter = (v: Platform | 'all') => {
+    setPlatformFilter(v);
+    updateFilters(statusFilter, v);
+  };
+
+  // Derive unique platforms from the goals
+  const availablePlatforms = [...new Set(allGoals.map(g => g.platform ?? g.platforms[0]))].filter(Boolean) as Platform[];
+
+  const filtered = allGoals.filter(g => {
+    if (statusFilter !== 'all' && g.healthStatus !== statusFilter) return false;
+    if (platformFilter !== 'all' && (g.platform ?? g.platforms[0]) !== platformFilter) return false;
+    return true;
+  });
 
   return (
     <div className="min-w-0">
@@ -86,27 +125,66 @@ export default function Goals() {
         </div>
       </div>
 
-      {/* Status filters */}
-      <div className="flex items-center gap-1 mb-6">
-        {filters.map(f => (
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6">
+        {/* Health status pills */}
+        <div className="flex items-center gap-1">
+          {healthFilters.map(f => (
+            <button
+              key={f.value}
+              onClick={() => handleStatusFilter(f.value)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-body3 font-medium transition-colors',
+                statusFilter === f.value
+                  ? 'bg-plum-600 text-white'
+                  : 'text-cool-600 hover:bg-neutral-100'
+              )}
+            >
+              {f.label}
+              {f.value !== 'all' && (
+                <span className="ml-1.5 text-label">
+                  ({allGoals.filter(g => g.healthStatus === f.value).length})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-px h-5 bg-neutral-200" />
+
+        {/* Platform pills */}
+        <div className="flex items-center gap-1">
           <button
-            key={f.value}
-            onClick={() => setStatusFilter(f.value)}
+            onClick={() => handlePlatformFilter('all')}
             className={cn(
               'px-3 py-1.5 rounded-lg text-body3 font-medium transition-colors',
-              statusFilter === f.value
+              platformFilter === 'all'
                 ? 'bg-plum-600 text-white'
                 : 'text-cool-600 hover:bg-neutral-100'
             )}
           >
-            {f.label}
-            {f.value !== 'all' && (
-              <span className="ml-1.5 text-label">
-                ({allGoals.filter(g => g.healthStatus === f.value).length})
-              </span>
-            )}
+            All Platforms
           </button>
-        ))}
+          {availablePlatforms.map(p => {
+            const count = allGoals.filter(g => (g.platform ?? g.platforms[0]) === p).length;
+            return (
+              <button
+                key={p}
+                onClick={() => handlePlatformFilter(p)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-body3 font-medium transition-colors',
+                  platformFilter === p
+                    ? 'bg-plum-600 text-white'
+                    : 'text-cool-600 hover:bg-neutral-100'
+                )}
+              >
+                {platformFilter !== p && <PlatformBadge platform={p} size="sm" showLabel={false} />}
+                {platformConfigs[p].label}
+                <span className="text-label">({count})</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Goal cards grid */}

@@ -368,7 +368,7 @@ interface VeraChatPanelProps {
 
 export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPanelProps) {
   const navigate = useNavigate();
-  const { setGoalCreated, setGoalConnectedDspLabel, appliedRecIds, addAppliedRec } = useVera();
+  const { setGoalCreated, setGoalConnectedDspLabel, setGoalPlatform, setGoalMediaType, setGoalName: setContextGoalName, appliedRecIds, addAppliedRec } = useVera();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -489,6 +489,9 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
     if (isGoalCreate && goalPhase === 'dsp-syncing') {
       const t = setTimeout(() => {
         setGoalCreated(true);
+        if (selectedPlatform) setGoalPlatform(selectedPlatform);
+        if (selectedMediaType) setGoalMediaType(selectedMediaType);
+        setContextGoalName(goalName.trim());
         setGoalPhase('complete');
         setMessages(prev => [
           ...prev,
@@ -502,7 +505,7 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
       }, 2500);
       return () => clearTimeout(t);
     }
-  }, [isGoalCreate, goalPhase, setGoalCreated]);
+  }, [isGoalCreate, goalPhase, setGoalCreated, selectedPlatform, selectedMediaType, goalName, setGoalPlatform, setGoalMediaType, setContextGoalName]);
 
   /* ── Scroll to bottom on new messages ── */
   useEffect(() => {
@@ -1066,6 +1069,9 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
                 onClick={() => {
                   if (!goalName.trim()) return;
                   setGoalCreated(true);
+                  if (selectedPlatform) setGoalPlatform(selectedPlatform);
+                  if (selectedMediaType) setGoalMediaType(selectedMediaType);
+                  setContextGoalName(goalName.trim());
                   setGoalPhase('goal-created');
                   addVeraMessage(
                     `"${goalName.trim()}" is live and showing on your Goals dashboard! Now that your goal is created, prevent mistakes and automate brand safety controls by connecting your DSP. It takes about 30 seconds and I'll handle the syncing for you.`,
@@ -1201,6 +1207,9 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
             <button
               onClick={() => {
                 setGoalCreated(true);
+                if (selectedPlatform) setGoalPlatform(selectedPlatform);
+                if (selectedMediaType) setGoalMediaType(selectedMediaType);
+                setContextGoalName(goalName.trim());
                 setGoalPhase('complete');
                 addVeraMessage(
                   "No problem — you can connect a DSP anytime from your goal settings. Your goal is live and I'll be here whenever you need help optimizing. Here's what you can do next:",

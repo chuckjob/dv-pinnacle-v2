@@ -33,7 +33,7 @@ const platformFilters: { label: string; value: Platform | 'all' }[] = [
 
 export default function Campaigns() {
   const navigate = useNavigate();
-  const { goalCreated, goalConnectedDspLabel } = useVera();
+  const { goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, goalName: contextGoalName } = useVera();
 
   const [statusFilter, setStatusFilter] = useState<EntityStatus | 'all'>('all');
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
@@ -43,9 +43,15 @@ export default function Campaigns() {
 
   // Build goals list
   const allGoals = useMemo(() => {
-    const goal5Data = { ...newGoal5, connectedDsp: goalConnectedDspLabel || undefined };
+    const wizardOverrides = {
+      connectedDsp: goalConnectedDspLabel || undefined,
+      ...(goalPlatform ? { platform: goalPlatform, platforms: [goalPlatform] } : {}),
+      ...(goalMediaType ? { mediaType: goalMediaType } : {}),
+      ...(contextGoalName ? { name: contextGoalName } : {}),
+    } as const;
+    const goal5Data = { ...newGoal5, ...wizardOverrides };
     return goalCreated ? [goal5Data, ...mockGoals] : mockGoals;
-  }, [goalCreated, goalConnectedDspLabel]);
+  }, [goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, contextGoalName]);
 
   // Flatten all campaigns from goals + unassigned
   const allCampaigns: FlatCampaign[] = useMemo(() => {

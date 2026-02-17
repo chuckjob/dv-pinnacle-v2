@@ -26,16 +26,22 @@ const objectiveLabels: Record<string, string> = {
 export default function GoalDetail() {
   const { goalId } = useParams();
   const navigate = useNavigate();
-  const { goalCreated, goalConnectedDspLabel, refreshedGoalIds } = useVera();
+  const { goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, goalName: contextGoalName, refreshedGoalIds } = useVera();
 
   // Build combined goals list including Vera-created goal
   const allGoals = useMemo(() => {
     if (!goalCreated) return mockGoals;
+    const wizardOverrides = {
+      connectedDsp: goalConnectedDspLabel || undefined,
+      ...(goalPlatform ? { platform: goalPlatform, platforms: [goalPlatform] } : {}),
+      ...(goalMediaType ? { mediaType: goalMediaType } : {}),
+      ...(contextGoalName ? { name: contextGoalName } : {}),
+    } as const;
     const goal5Data = refreshedGoalIds.has('goal-5')
-      ? { ...refreshedGoal5, connectedDsp: goalConnectedDspLabel || undefined }
-      : { ...newGoal5, connectedDsp: goalConnectedDspLabel || undefined };
+      ? { ...refreshedGoal5, ...wizardOverrides }
+      : { ...newGoal5, ...wizardOverrides };
     return [goal5Data, ...mockGoals];
-  }, [goalCreated, goalConnectedDspLabel, refreshedGoalIds]);
+  }, [goalCreated, goalConnectedDspLabel, goalPlatform, goalMediaType, contextGoalName, refreshedGoalIds]);
 
   const goal = allGoals.find(g => g.id === goalId);
 

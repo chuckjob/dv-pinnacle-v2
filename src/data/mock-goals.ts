@@ -28,7 +28,7 @@ export const mockGoals: Goal[] = [
     blockRate: 7.2,
     platforms: ['open-web'],
     safetyTier: 'moderate',
-    connectedDsp: 'DV360',
+    connectedDsp: undefined,
     createdAt: '2025-12-15',
     updatedAt: '2026-02-13',
     campaigns: [
@@ -122,7 +122,7 @@ export const mockGoals: Goal[] = [
     blockRate: 3.5,
     platforms: ['youtube'],
     safetyTier: 'moderate',
-    connectedDsp: 'DV360',
+    connectedDsp: undefined,
     createdAt: '2025-12-15',
     updatedAt: '2026-02-13',
     campaigns: [
@@ -215,7 +215,7 @@ export const mockGoals: Goal[] = [
     blockRate: 5.1,
     platforms: ['meta'],
     safetyTier: 'moderate',
-    connectedDsp: 'DV360',
+    connectedDsp: undefined,
     createdAt: '2025-12-15',
     updatedAt: '2026-02-13',
     campaigns: [
@@ -308,7 +308,7 @@ export const mockGoals: Goal[] = [
     blockRate: 14.2,
     platforms: ['open-web'],
     safetyTier: 'loose',
-    connectedDsp: 'The Trade Desk',
+    connectedDsp: undefined,
     createdAt: '2025-12-10',
     updatedAt: '2026-02-13',
     campaigns: [
@@ -401,7 +401,7 @@ export const mockGoals: Goal[] = [
     blockRate: 6.8,
     platforms: ['meta'],
     safetyTier: 'loose',
-    connectedDsp: 'The Trade Desk',
+    connectedDsp: undefined,
     createdAt: '2025-12-10',
     updatedAt: '2026-02-13',
     campaigns: [
@@ -476,7 +476,7 @@ export const mockGoals: Goal[] = [
     blockRate: 4.1,
     platforms: ['snapchat'],
     safetyTier: 'loose',
-    connectedDsp: 'The Trade Desk',
+    connectedDsp: undefined,
     createdAt: '2025-12-10',
     updatedAt: '2026-02-13',
     campaigns: [
@@ -551,7 +551,7 @@ export const mockGoals: Goal[] = [
     blockRate: 9.8,
     platforms: ['open-web'],
     safetyTier: 'moderate',
-    connectedDsp: 'DV360',
+    connectedDsp: undefined,
     createdAt: '2026-01-20',
     updatedAt: '2026-02-12',
     campaigns: [
@@ -644,7 +644,7 @@ export const mockGoals: Goal[] = [
     blockRate: 5.2,
     platforms: ['tiktok'],
     safetyTier: 'moderate',
-    connectedDsp: 'DV360',
+    connectedDsp: undefined,
     createdAt: '2026-01-20',
     updatedAt: '2026-02-12',
     campaigns: [
