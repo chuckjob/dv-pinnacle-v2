@@ -12,6 +12,7 @@ import type { Platform } from '@/types/goal';
 import { CampaignTreeTable } from '@/components/goals/CampaignTreeTable';
 import { GoalTrendsChart } from '@/components/goals/GoalTrendsChart';
 import { GoalPillarCards } from '@/components/goals/GoalPillarCards';
+import { MonitoringModeBanner } from '@/components/goals/MonitoringModeBanner';
 
 const objectiveLabels: Record<string, string> = {
   'brand-awareness': 'Brand Awareness',
@@ -175,6 +176,13 @@ export default function GoalDetail() {
           })}
         </div>
       </div>
+
+      {/* Monitoring Mode Banner — shows when no DSP connected */}
+      {!goal.connectedDsp && (
+        <div className="mb-6">
+          <MonitoringModeBanner safetyTier={goal.safetyTier} goalId={goal.id} />
+        </div>
+      )}
 
       {/* Spend + Impressions + Block Rate */}
       <div className="grid grid-cols-3 gap-3 mb-4">
