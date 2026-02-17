@@ -219,21 +219,23 @@ export function GoalCard({ goal, onClick, onEdit, onDelete, onConnectDsp, onRefr
             )}
           >
             <div className="flex items-center gap-0.5 min-w-0">
-              <p className={cn('text-caption uppercase tracking-wide truncate', p.hasIssue ? 'text-orange-600' : 'text-cool-400')}>{p.label}</p>
+              <p className={cn('text-label uppercase tracking-wide truncate', p.hasIssue ? 'text-orange-600' : 'text-cool-400')}>{p.label}</p>
               {p.hasIssue && <AlertTriangle className="h-2.5 w-2.5 text-orange-500 flex-shrink-0" />}
             </div>
-            <p className={cn('text-body3 font-semibold mt-0.5 truncate', p.hasIssue ? 'text-orange-700' : 'text-cool-900')}>{p.value}</p>
+            <p className={cn('text-body2 font-semibold mt-0.5 truncate', p.hasIssue ? 'text-orange-700' : 'text-cool-900')}>{p.value}</p>
             {p.hasIssue && <p className="text-caption text-orange-500 mt-0.5 truncate">{p.benchmark}</p>}
           </div>
         ))}
       </div>
 
-      {/* Row 4: Spend + Impressions + Campaigns + DSP */}
-      <div className="grid grid-cols-4 gap-x-2 gap-y-1 mt-3 pt-3 border-t border-neutral-100">
-        <div className="min-w-0">
-          <span className="text-caption text-cool-400">Spend</span>
-          <p className="text-label font-semibold text-cool-700 truncate">{formatCompactCurrency(goal.totalSpend)}</p>
-        </div>
+      {/* Row 4: Stats — Spend only shown when DSP connected */}
+      <div className={cn('grid gap-x-2 gap-y-1 mt-3 pt-3 border-t border-neutral-100', goal.connectedDsp ? 'grid-cols-4' : 'grid-cols-3')}>
+        {goal.connectedDsp && (
+          <div className="min-w-0">
+            <span className="text-caption text-cool-400">Spend</span>
+            <p className="text-label font-semibold text-cool-700 truncate">{formatCompactCurrency(goal.totalSpend)}</p>
+          </div>
+        )}
         <div className="min-w-0">
           <span className="text-caption text-cool-400">Impressions</span>
           <p className="text-label font-semibold text-cool-700 truncate">{formatNumber(goal.totalImpressions)}</p>
