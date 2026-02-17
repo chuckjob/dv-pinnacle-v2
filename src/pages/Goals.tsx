@@ -17,7 +17,7 @@ const filters: { label: string; value: HealthStatus | 'all' }[] = [
 
 export default function Goals() {
   const navigate = useNavigate();
-  const { openVeraWithContext, goalCreated, goalConnectedDspLabel, refreshedGoalIds, addRefreshedGoalId } = useVera();
+  const { openVeraWithContext, goalCreated, goalConnectedDspLabel, refreshedGoalIds, addRefreshedGoalId, veraOpen } = useVera();
   const [statusFilter, setStatusFilter] = useState<HealthStatus | 'all'>('all');
   const [createOpen, setCreateOpen] = useState(false);
   const createRef = useRef<HTMLDivElement>(null);
@@ -111,7 +111,7 @@ export default function Goals() {
 
       {/* Goal cards grid */}
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className={cn('grid gap-4', veraOpen ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-2')}>
           {filtered.map(goal => (
             <GoalCard
               key={goal.id}

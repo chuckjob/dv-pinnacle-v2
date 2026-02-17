@@ -210,19 +210,19 @@ export function GoalPillarCards({ authenticAdRate, fraud, suitability, viewabili
         </div>
 
         {/* 4 pillar sub-metrics in a row */}
-        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {pillars.map(p => (
             <div
               key={p.key}
               className={cn(
-                'rounded-lg px-2 py-2 sm:px-3 sm:py-2.5 border min-w-0 overflow-hidden',
+                'rounded-lg px-2 py-2 border min-w-0 overflow-hidden',
                 p.passing
                   ? 'bg-neutral-25 border-neutral-100'
                   : 'bg-orange-25 border-orange-200'
               )}
             >
-              <div className="flex items-center gap-1 mb-0.5 min-w-0">
-                <span className={cn('text-caption sm:text-label truncate', p.passing ? 'text-cool-500' : 'text-orange-600')}>
+              <div className="flex items-center gap-0.5 mb-0.5 min-w-0">
+                <span className={cn('text-label truncate', p.passing ? 'text-cool-500' : 'text-orange-600')}>
                   {p.label}
                 </span>
                 {p.passing ? (
@@ -231,7 +231,7 @@ export function GoalPillarCards({ authenticAdRate, fraud, suitability, viewabili
                   <AlertTriangle className="h-3 w-3 text-orange-500 flex-shrink-0" />
                 )}
               </div>
-              <span className={cn('text-body3 sm:text-body2 font-bold block truncate', p.passing ? 'text-cool-900' : 'text-orange-700')}>
+              <span className={cn('text-body2 font-bold block truncate', p.passing ? 'text-cool-900' : 'text-orange-700')}>
                 {formatPercent(p.value)}
               </span>
               {!p.passing && (

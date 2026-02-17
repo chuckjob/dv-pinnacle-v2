@@ -51,7 +51,7 @@ export function GoalCard({ goal, onClick, onEdit, onDelete, onConnectDsp, onRefr
   return (
     <div
       onClick={onClick}
-      className="rounded-xl border border-neutral-200 bg-white p-5 cursor-pointer hover:shadow-elevation-raised hover:border-plum-200 transition-all group"
+      className="rounded-xl border border-neutral-200 bg-white p-5 cursor-pointer hover:shadow-elevation-raised hover:border-plum-200 transition-all group overflow-hidden"
     >
       {/* Row 1: Name + status badges + menu */}
       <div className="flex items-start justify-between">
@@ -204,7 +204,7 @@ export function GoalCard({ goal, onClick, onEdit, onDelete, onConnectDsp, onRefr
       </div>
 
       {/* Row 3: 4 Pillar inset cards — underperforming pillars highlighted */}
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+      <div className="grid grid-cols-4 gap-1.5">
         {[
           { label: 'Fraud-Free', value: formatPercent(100 - goal.fraudRate), hasIssue: goal.fraudRate > 2, benchmark: 'Bench: 98%' },
           { label: 'Viewable', value: formatPercent(goal.viewabilityRate), hasIssue: goal.viewabilityRate < 70, benchmark: 'Bench: 70%' },
@@ -214,48 +214,45 @@ export function GoalCard({ goal, onClick, onEdit, onDelete, onConnectDsp, onRefr
           <div
             key={p.label}
             className={cn(
-              'rounded-lg px-2 py-2 sm:px-3 sm:py-3 min-w-0 overflow-hidden',
+              'rounded-lg px-2 py-2 min-w-0 overflow-hidden',
               p.hasIssue ? 'bg-orange-25' : 'bg-neutral-50'
             )}
           >
-            <div className="flex items-center gap-1 min-w-0">
-              <p className={cn('text-caption sm:text-label uppercase tracking-wide truncate', p.hasIssue ? 'text-orange-600' : 'text-cool-400')}>{p.label}</p>
+            <div className="flex items-center gap-0.5 min-w-0">
+              <p className={cn('text-caption uppercase tracking-wide truncate', p.hasIssue ? 'text-orange-600' : 'text-cool-400')}>{p.label}</p>
               {p.hasIssue && <AlertTriangle className="h-2.5 w-2.5 text-orange-500 flex-shrink-0" />}
             </div>
-            <p className={cn('text-body3 sm:text-h5 font-semibold mt-1 truncate', p.hasIssue ? 'text-orange-700' : 'text-cool-900')}>{p.value}</p>
-            <p className={cn('text-caption mt-1 truncate', p.hasIssue ? 'text-orange-500' : 'invisible')}>{p.benchmark}</p>
+            <p className={cn('text-body3 font-semibold mt-0.5 truncate', p.hasIssue ? 'text-orange-700' : 'text-cool-900')}>{p.value}</p>
+            {p.hasIssue && <p className="text-caption text-orange-500 mt-0.5 truncate">{p.benchmark}</p>}
           </div>
         ))}
       </div>
 
       {/* Row 4: Spend + Impressions + Campaigns + DSP */}
-      <div className="flex items-center gap-3 sm:gap-4 mt-3 pt-3 border-t border-neutral-100 flex-wrap min-w-0 overflow-hidden">
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <span className="text-caption sm:text-body3 text-cool-400">Spend</span>
-          <span className="text-caption sm:text-body3 font-semibold text-cool-700">{formatCompactCurrency(goal.totalSpend)}</span>
+      <div className="grid grid-cols-4 gap-x-2 gap-y-1 mt-3 pt-3 border-t border-neutral-100">
+        <div className="min-w-0">
+          <span className="text-caption text-cool-400">Spend</span>
+          <p className="text-label font-semibold text-cool-700 truncate">{formatCompactCurrency(goal.totalSpend)}</p>
         </div>
-        <span className="text-cool-200">|</span>
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <span className="text-caption sm:text-body3 text-cool-400">Imps</span>
-          <span className="text-caption sm:text-body3 font-semibold text-cool-700">{formatNumber(goal.totalImpressions)}</span>
+        <div className="min-w-0">
+          <span className="text-caption text-cool-400">Impressions</span>
+          <p className="text-label font-semibold text-cool-700 truncate">{formatNumber(goal.totalImpressions)}</p>
         </div>
-        <span className="text-cool-200">|</span>
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <span className="text-caption sm:text-body3 text-cool-400">Camps</span>
-          <span className="text-caption sm:text-body3 font-semibold text-cool-700">{goal.campaigns.length}</span>
+        <div className="min-w-0">
+          <span className="text-caption text-cool-400">Campaigns</span>
+          <p className="text-label font-semibold text-cool-700">{goal.campaigns.length}</p>
         </div>
-        <span className="text-cool-200">|</span>
-        <div className="flex items-center gap-1 sm:gap-1.5">
-          <span className="text-caption sm:text-body3 text-cool-400">DSP</span>
+        <div className="min-w-0">
+          <span className="text-caption text-cool-400">DSP</span>
           {goal.connectedDsp ? (
-            <span className="text-caption sm:text-body3 font-semibold text-cool-700">{goal.connectedDsp}</span>
+            <p className="text-label font-semibold text-cool-700 truncate">{goal.connectedDsp}</p>
           ) : (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onConnectDsp?.(goal.id);
               }}
-              className="text-caption sm:text-body3 font-semibold text-plum-600 hover:text-plum-700 transition-colors"
+              className="text-label font-semibold text-plum-600 hover:text-plum-700 transition-colors block"
             >
               Connect
             </button>
