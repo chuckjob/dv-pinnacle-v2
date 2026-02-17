@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PlatformBadge } from '@/components/shared/PlatformBadge';
 import { MetricCard } from '@/components/shared/MetricCard';
 import { cn } from '@/lib/utils';
-import { formatNumber, formatCompactCurrency, formatPercent, formatDate } from '@/lib/formatters';
+import { formatNumber, formatCompactCurrency, formatPercent, formatDate, formatCpm } from '@/lib/formatters';
 import type { Platform } from '@/types/goal';
 import { CampaignTreeTable } from '@/components/goals/CampaignTreeTable';
 import { GoalTrendsChart } from '@/components/goals/GoalTrendsChart';
@@ -184,34 +184,91 @@ export default function GoalDetail() {
         </div>
       )}
 
-      {/* Spend + Impressions + Block Rate */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <MetricCard
-          label="Total Spend"
-          value={formatCompactCurrency(metrics.spend)}
-          valueClassName="text-h3"
-          className="p-6"
-          trend={3.1}
-          trendDirection="up"
-          isPositive={false}
-        />
-        <MetricCard
-          label="Impressions"
-          value={formatNumber(metrics.impressions)}
-          valueClassName="text-h3"
-          className="p-6"
-          trend={5.2}
-          trendDirection="up"
-          isPositive
-        />
-        <MetricCard
-          label="Block Rate"
-          value={formatPercent(metrics.blockRate)}
-          description="Impressions blocked by pre-bid protection"
-          valueClassName="text-h3"
-          className="p-6"
-        />
-      </div>
+      {/* Financial + Delivery Metrics */}
+      {goal.connectedDsp ? (
+        /* ── DSP connected: show Media Waste + CPAI alongside Spend, Impressions, Block Rate ── */
+        <>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <MetricCard
+              label="Media Waste"
+              value={formatCompactCurrency(
+                metrics.spend * (1 - metrics.authenticAdRate / 100)
+              )}
+              description="Spend on non-authentic impressions"
+              variant={metrics.spend * (1 - metrics.authenticAdRate / 100) > 50_000 ? 'warning' : 'default'}
+              valueClassName="text-h4"
+              className="p-5"
+            />
+            <MetricCard
+              label="Cost per Authentic Impression"
+              value={formatCpm(
+                metrics.impressions * (metrics.authenticAdRate / 100) > 0
+                  ? metrics.spend / (metrics.impressions * (metrics.authenticAdRate / 100))
+                  : 0
+              )}
+              description="Effective CPM for authentic impressions"
+              valueClassName="text-h4"
+              className="p-5"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <MetricCard
+              label="Total Spend"
+              value={formatCompactCurrency(metrics.spend)}
+              valueClassName="text-h5"
+              className="p-4"
+              trend={3.1}
+              trendDirection="up"
+              isPositive={false}
+            />
+            <MetricCard
+              label="Impressions"
+              value={formatNumber(metrics.impressions)}
+              valueClassName="text-h5"
+              className="p-4"
+              trend={5.2}
+              trendDirection="up"
+              isPositive
+            />
+            <MetricCard
+              label="Block Rate"
+              value={formatPercent(metrics.blockRate)}
+              description="Blocked by pre-bid protection"
+              valueClassName="text-h5"
+              className="p-4"
+            />
+          </div>
+        </>
+      ) : (
+        /* ── No DSP: standard spend + impressions + block rate ── */
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <MetricCard
+            label="Total Spend"
+            value={formatCompactCurrency(metrics.spend)}
+            valueClassName="text-h3"
+            className="p-6"
+            trend={3.1}
+            trendDirection="up"
+            isPositive={false}
+          />
+          <MetricCard
+            label="Impressions"
+            value={formatNumber(metrics.impressions)}
+            valueClassName="text-h3"
+            className="p-6"
+            trend={5.2}
+            trendDirection="up"
+            isPositive
+          />
+          <MetricCard
+            label="Block Rate"
+            value={formatPercent(metrics.blockRate)}
+            description="Impressions blocked by pre-bid protection"
+            valueClassName="text-h3"
+            className="p-6"
+          />
+        </div>
+      )}
 
       {/* AAR + Quality Pillars + Recommendations (unified card) */}
       <div className="mb-6">

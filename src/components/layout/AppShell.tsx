@@ -26,9 +26,9 @@ function AppShellInner() {
           <div className={cn('relative flex-1 min-w-0 rounded-2xl bg-white shadow-sm p-6', veraOpen ? 'overflow-hidden' : 'overflow-y-auto')}>
             <Breadcrumbs />
             <Outlet />
-            {/* Scrim overlay when Vera is open */}
+            {/* Scrim overlay when Vera is open — z-30 to sit above all page content */}
             {veraOpen && (
-              <div className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300" style={{ backgroundColor: 'rgba(20, 17, 59, 0.15)' }} />
+              <div className="absolute inset-0 z-30 rounded-2xl pointer-events-none transition-opacity duration-300" style={{ backgroundColor: 'rgba(20, 17, 59, 0.15)' }} />
             )}
           </div>
 
