@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import { mockGoals } from '@/data/mock-goals';
-import { HeroMetricCard } from '@/components/shared/HeroMetricCard';
 import { MetricCard } from '@/components/shared/MetricCard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { IssueBadgeList } from '@/components/shared/IssueBadge';
+import { GoalPillarCards } from '@/components/goals/GoalPillarCards';
 import { DataTable, type ColumnDef } from '@/components/shared/DataTable';
 import { formatNumber, formatCompactCurrency, formatPercent } from '@/lib/formatters';
 import { getIssues, getAuthenticRateColor } from '@/lib/authentic-ad-utils';
@@ -105,20 +105,8 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Authentic Ad Rate (hero) + Total Spend + Impressions */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <div className="col-span-2">
-          <HeroMetricCard
-            label="Authentic Ad Rate"
-            value={formatPercent(weightedAuthenticRate)}
-            description="Percentage of impressions passing all quality pillars"
-            valueColorClass={getAuthenticRateColor(weightedAuthenticRate)}
-            trend={2.1}
-            trendDirection="up"
-            isPositive
-            className="h-full"
-          />
-        </div>
+      {/* Spend + Impressions */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
         <MetricCard
           label="Total Spend"
           value={formatCompactCurrency(totalSpend)}
@@ -139,39 +127,14 @@ export default function Overview() {
         />
       </div>
 
-      {/* Quality Pillars: 4 cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <MetricCard
-          label="Fraud-Free"
-          value={formatPercent(weightedFraudFree)}
-          trend={0.3}
-          trendDirection="up"
-          isPositive
-          variant={(100 - weightedFraudFree) > 2 ? 'warning' : 'default'}
-        />
-        <MetricCard
-          label="Brand Suitable"
-          value={formatPercent(weightedSuitability)}
-          trend={0.4}
-          trendDirection="up"
-          isPositive
-          variant={weightedSuitability < 95 ? 'warning' : 'default'}
-        />
-        <MetricCard
-          label="Viewable"
-          value={formatPercent(weightedViewability)}
-          trend={1.5}
-          trendDirection="up"
-          isPositive
-          variant={weightedViewability < 70 ? 'warning' : 'default'}
-        />
-        <MetricCard
-          label="In-Geo"
-          value={formatPercent(weightedInGeo)}
-          trend={0.2}
-          trendDirection="up"
-          isPositive
-          variant={weightedInGeo < 95 ? 'warning' : 'default'}
+      {/* Unified AAR + Quality Pillars */}
+      <div className="mb-6">
+        <GoalPillarCards
+          authenticAdRate={weightedAuthenticRate}
+          fraud={100 - weightedFraudFree}
+          suitability={weightedSuitability}
+          viewability={weightedViewability}
+          inGeo={weightedInGeo}
         />
       </div>
 
