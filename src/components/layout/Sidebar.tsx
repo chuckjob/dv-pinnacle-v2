@@ -1,10 +1,11 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Target, Store, Settings, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, Target, Megaphone, Store, Settings, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Overview', exact: true },
   { to: '/goals', icon: Target, label: 'Goals', exact: false },
+  { to: '/campaigns', icon: Megaphone, label: 'Campaigns', exact: false },
   { to: '/marketplace', icon: Store, label: 'Marketplace', exact: true },
   { to: '/settings', icon: Settings, label: 'Settings', exact: true },
   { to: '/help', icon: HelpCircle, label: 'Help & Support', exact: true },

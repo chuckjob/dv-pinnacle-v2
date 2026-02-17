@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Calendar, Sparkles } from 'lucide-react';
 import { mockGoals, newGoal5, refreshedGoal5 } from '@/data/mock-goals';
+import { unassignedCampaigns } from '@/data/mock-campaigns';
 import { useVera } from '@/hooks/use-vera';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { PlatformBadge } from '@/components/shared/PlatformBadge';
@@ -24,14 +25,29 @@ export default function CampaignDetail() {
     return [goal5Data, ...mockGoals];
   }, [goalCreated, goalConnectedDspLabel, refreshedGoalIds]);
 
-  const goal = allGoals.find(g => g.id === goalId);
-  const campaign = goal?.campaigns.find(c => c.id === campaignId);
+  // Find campaign: first try via goalId param, then search all goals, then unassigned
+  const { goal, campaign } = useMemo(() => {
+    if (goalId) {
+      const g = allGoals.find(g => g.id === goalId);
+      const c = g?.campaigns.find(c => c.id === campaignId);
+      if (g && c) return { goal: g, campaign: c };
+    }
+    // Search all goals for this campaign
+    for (const g of allGoals) {
+      const c = g.campaigns.find(c => c.id === campaignId);
+      if (c) return { goal: g, campaign: c };
+    }
+    // Check unassigned campaigns
+    const unassigned = unassignedCampaigns.find(c => c.id === campaignId);
+    if (unassigned) return { goal: null, campaign: unassigned };
+    return { goal: null, campaign: null };
+  }, [goalId, campaignId, allGoals]);
 
   const [selectedAdSetId, setSelectedAdSetId] = useState<string | null>(
     campaign?.adSets[0]?.id ?? null
   );
 
-  if (!goal || !campaign) {
+  if (!campaign) {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-body2 text-cool-500">Campaign not found</p>

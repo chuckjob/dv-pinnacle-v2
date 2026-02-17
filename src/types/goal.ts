@@ -1,6 +1,9 @@
 // ─── Platform & Inventory ───────────────────────────────────
-export type Platform = 'open-web' | 'meta' | 'tiktok' | 'youtube' | 'ctv' | 'snapchat';
+export type Platform = 'open-web' | 'meta' | 'tiktok' | 'youtube' | 'ctv' | 'snapchat' | 'linkedin' | 'twitch';
 export type InventoryType = 'open-market' | 'pmp' | 'pg' | 'all';
+
+// ─── Media Type ────────────────────────────────────────────
+export type MediaType = 'display' | 'social' | 'video' | 'ctv';
 
 // ─── Goal Objective ─────────────────────────────────────────
 export type GoalObjective = 'brand-awareness' | 'lead-generation' | 'conversions' | 'reach' | 'engagement' | 'video-views';
@@ -131,8 +134,18 @@ export interface Goal {
   inGeoRate: number;
   blockRate: number;
   platforms: Platform[];
+  /** Single platform for new goals (post media-type refactor) */
+  platform?: Platform;
+  /** Media type for new goals */
+  mediaType?: MediaType;
   safetyTier?: SafetyTierKey;
   connectedDsp?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ─── Flat Campaign (for campaigns list view) ────────────────
+export interface FlatCampaign extends Campaign {
+  goalId?: string;
+  goalName?: string;
 }

@@ -1,0 +1,158 @@
+import type { Goal, FlatCampaign, Campaign } from '@/types/goal';
+
+// ─── Utility: Flatten all campaigns from goals ─────────────
+export function flattenCampaigns(goals: Goal[]): FlatCampaign[] {
+  const flat: FlatCampaign[] = [];
+  for (const goal of goals) {
+    for (const campaign of goal.campaigns) {
+      flat.push({
+        ...campaign,
+        goalId: goal.id,
+        goalName: goal.name,
+      });
+    }
+  }
+  return flat;
+}
+
+// ─── Unassigned Campaigns (no goal) ─────────────────────────
+export const unassignedCampaigns: FlatCampaign[] = [
+  {
+    id: 'camp-ua-1',
+    name: 'Summer Hydration — Display Prospecting',
+    platform: 'open-web',
+    objective: 'brand-awareness',
+    status: 'active',
+    healthStatus: 'on-track',
+    impressions: 14_500_000,
+    spend: 29_000,
+    firstSeen: '2026-02-01',
+    lastSeen: '2026-02-14',
+    fraudScore: 1.8,
+    sustainabilityScore: 72,
+    viewabilityRate: 71.2,
+    attentionIndex: 66,
+    authenticAdRate: 68.5,
+    inGeoRate: 96.1,
+    brandSuitabilityRate: 97.3,
+    blockRate: 2.7,
+    adSets: [
+      {
+        id: 'as-ua-1a',
+        platformAdSetName: 'Hydration Awareness — Desktop',
+        platform: 'open-web',
+        impressions: 8_200_000,
+        spend: 16_400,
+        firstSeen: '2026-02-01',
+        lastSeen: '2026-02-14',
+        viewableRate: 73.5,
+        attentionIndex: 68,
+        fraudScore: 1.5,
+        brandSuitabilityRate: 97.8,
+        inGeoRate: 96.5,
+        authenticAdRate: 70.2,
+        ads: [
+          { id: 'ad-ua-1a1', platformAdName: 'Hydrate Hero — 300x250', format: 'display', impressions: 5_100_000, spend: 10_200, firstSeen: '2026-02-01', lastSeen: '2026-02-14', viewableRate: 75.0, attentionIndex: 70, fraudScore: 1.4, brandSuitabilityRate: 98.0, inGeoRate: 96.8, authenticAdRate: 71.5, percentViewed: 0, dwellTime: 2.2 },
+          { id: 'ad-ua-1a2', platformAdName: 'Cool Splash — 728x90', format: 'display', impressions: 3_100_000, spend: 6_200, firstSeen: '2026-02-01', lastSeen: '2026-02-14', viewableRate: 71.0, attentionIndex: 65, fraudScore: 1.7, brandSuitabilityRate: 97.5, inGeoRate: 96.0, authenticAdRate: 68.2, percentViewed: 0, dwellTime: 1.6 },
+        ],
+      },
+      {
+        id: 'as-ua-1b',
+        platformAdSetName: 'Hydration Awareness — Mobile',
+        platform: 'open-web',
+        impressions: 6_300_000,
+        spend: 12_600,
+        firstSeen: '2026-02-01',
+        lastSeen: '2026-02-14',
+        viewableRate: 68.0,
+        attentionIndex: 63,
+        fraudScore: 2.2,
+        brandSuitabilityRate: 96.5,
+        inGeoRate: 95.5,
+        authenticAdRate: 66.0,
+        ads: [
+          { id: 'ad-ua-1b1', platformAdName: 'On-The-Go — 320x50', format: 'display', impressions: 6_300_000, spend: 12_600, firstSeen: '2026-02-01', lastSeen: '2026-02-14', viewableRate: 68.0, attentionIndex: 63, fraudScore: 2.2, brandSuitabilityRate: 96.5, inGeoRate: 95.5, authenticAdRate: 66.0, percentViewed: 0, dwellTime: 1.3 },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'camp-ua-2',
+    name: 'Protein Bar Launch — TikTok In-Feed',
+    platform: 'tiktok',
+    objective: 'engagement',
+    status: 'draft',
+    healthStatus: 'needs-attention',
+    impressions: 0,
+    spend: 0,
+    firstSeen: '2026-02-15',
+    lastSeen: '2026-02-15',
+    fraudScore: 0,
+    sustainabilityScore: 0,
+    viewabilityRate: 0,
+    attentionIndex: 0,
+    authenticAdRate: 0,
+    inGeoRate: 0,
+    brandSuitabilityRate: 0,
+    blockRate: 0,
+    adSets: [],
+  },
+  {
+    id: 'camp-ua-3',
+    name: 'Electrolyte Mix — Meta Retargeting',
+    platform: 'meta',
+    objective: 'conversions',
+    status: 'active',
+    healthStatus: 'at-risk',
+    impressions: 5_800_000,
+    spend: 17_400,
+    firstSeen: '2026-01-28',
+    lastSeen: '2026-02-14',
+    fraudScore: 0.9,
+    sustainabilityScore: 68,
+    viewabilityRate: 62.4,
+    attentionIndex: 55,
+    authenticAdRate: 58.1,
+    inGeoRate: 93.2,
+    brandSuitabilityRate: 96.8,
+    blockRate: 3.2,
+    adSets: [
+      {
+        id: 'as-ua-3a',
+        platformAdSetName: 'Retarget — Cart Abandoners',
+        platform: 'meta',
+        impressions: 3_200_000,
+        spend: 9_600,
+        firstSeen: '2026-01-28',
+        lastSeen: '2026-02-14',
+        viewableRate: 64.0,
+        attentionIndex: 57,
+        fraudScore: 0.8,
+        brandSuitabilityRate: 97.1,
+        inGeoRate: 93.8,
+        authenticAdRate: 60.0,
+        ads: [
+          { id: 'ad-ua-3a1', platformAdName: 'Electrolyte Carousel — Retarget', format: 'carousel', impressions: 3_200_000, spend: 9_600, firstSeen: '2026-01-28', lastSeen: '2026-02-14', viewableRate: 64.0, attentionIndex: 57, fraudScore: 0.8, brandSuitabilityRate: 97.1, inGeoRate: 93.8, authenticAdRate: 60.0, percentViewed: 38.0, dwellTime: 2.8 },
+        ],
+      },
+      {
+        id: 'as-ua-3b',
+        platformAdSetName: 'Retarget — Product Viewers',
+        platform: 'meta',
+        impressions: 2_600_000,
+        spend: 7_800,
+        firstSeen: '2026-01-28',
+        lastSeen: '2026-02-14',
+        viewableRate: 60.5,
+        attentionIndex: 52,
+        fraudScore: 1.1,
+        brandSuitabilityRate: 96.4,
+        inGeoRate: 92.5,
+        authenticAdRate: 55.8,
+        ads: [
+          { id: 'ad-ua-3b1', platformAdName: 'Electrolyte Single — Viewer', format: 'display', impressions: 2_600_000, spend: 7_800, firstSeen: '2026-01-28', lastSeen: '2026-02-14', viewableRate: 60.5, attentionIndex: 52, fraudScore: 1.1, brandSuitabilityRate: 96.4, inGeoRate: 92.5, authenticAdRate: 55.8, percentViewed: 0, dwellTime: 1.9 },
+        ],
+      },
+    ],
+  },
+];

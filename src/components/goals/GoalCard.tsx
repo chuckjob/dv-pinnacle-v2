@@ -73,9 +73,7 @@ export function GoalCard({ goal, onClick, onEdit, onDelete, onConnectDsp, onRefr
             })()}
           </div>
           <div className="flex items-center gap-1.5 mt-2">
-            {goal.platforms.map(p => (
-              <PlatformBadge key={p} platform={p} size="sm" />
-            ))}
+            <PlatformBadge platform={goal.platform ?? goal.platforms[0]} size="sm" />
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">

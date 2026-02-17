@@ -131,49 +131,53 @@ export default function GoalDetail() {
           </div>
         </div>
 
-        {/* Platform Filter — multi-select chips */}
+        {/* Platform — single badge for single-platform goals, filter chips for multi-platform (legacy) */}
         <div className="flex items-center gap-2 mt-3 flex-wrap">
-          {goal.platforms.map(p => {
-            const isActive = selectedPlatforms.has(p);
-            return (
-              <button
-                key={p}
-                onClick={() => {
-                  const next = new Set(selectedPlatforms);
-                  if (isActive) {
-                    if (next.size > 1) next.delete(p);
-                  } else {
-                    next.add(p);
-                  }
-                  setSelectedPlatforms(next);
-                }}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full text-body3 font-medium transition-colors border h-8 px-3',
-                  isActive
-                    ? 'border-plum-300 bg-plum-50 text-plum-700'
-                    : 'border-neutral-200 bg-white text-cool-500 hover:border-neutral-300 hover:text-cool-700'
-                )}
-              >
-                <PlatformBadge platform={p} size="md" className="bg-transparent p-0" />
-                {isActive && (
-                  <span
-                    role="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (selectedPlatforms.size > 1) {
-                        const next = new Set(selectedPlatforms);
-                        next.delete(p);
-                        setSelectedPlatforms(next);
-                      }
-                    }}
-                    className="rounded-full hover:bg-plum-100 p-0.5 transition-colors -mr-1"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {goal.platforms.length <= 1 ? (
+            <PlatformBadge platform={goal.platform ?? goal.platforms[0]} size="md" />
+          ) : (
+            goal.platforms.map(p => {
+              const isActive = selectedPlatforms.has(p);
+              return (
+                <button
+                  key={p}
+                  onClick={() => {
+                    const next = new Set(selectedPlatforms);
+                    if (isActive) {
+                      if (next.size > 1) next.delete(p);
+                    } else {
+                      next.add(p);
+                    }
+                    setSelectedPlatforms(next);
+                  }}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full text-body3 font-medium transition-colors border h-8 px-3',
+                    isActive
+                      ? 'border-plum-300 bg-plum-50 text-plum-700'
+                      : 'border-neutral-200 bg-white text-cool-500 hover:border-neutral-300 hover:text-cool-700'
+                  )}
+                >
+                  <PlatformBadge platform={p} size="md" className="bg-transparent p-0" />
+                  {isActive && (
+                    <span
+                      role="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (selectedPlatforms.size > 1) {
+                          const next = new Set(selectedPlatforms);
+                          next.delete(p);
+                          setSelectedPlatforms(next);
+                        }
+                      }}
+                      className="rounded-full hover:bg-plum-100 p-0.5 transition-colors -mr-1"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
 

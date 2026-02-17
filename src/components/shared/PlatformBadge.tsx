@@ -1,4 +1,4 @@
-import { Globe, Tv, Music, Facebook, Youtube, Ghost } from 'lucide-react';
+import { Globe, Tv, Music, Facebook, Youtube, Ghost, Linkedin, Twitch } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Platform } from '@/types/goal';
 import { platformConfigs } from '@/types/platform';
@@ -10,6 +10,8 @@ const platformIcons: Record<Platform, React.ElementType> = {
   'meta': Facebook,
   'youtube': Youtube,
   'snapchat': Ghost,
+  'linkedin': Linkedin,
+  'twitch': Twitch,
 };
 
 const sizeStyles = {

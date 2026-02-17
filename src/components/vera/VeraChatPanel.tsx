@@ -8,6 +8,9 @@ import {
   AlertTriangle, TrendingDown, Ban, Filter, MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { MediaType, Platform } from '@/types/goal';
+import { mediaTypeConfigs, platformConfigs } from '@/types/platform';
+import { PlatformBadge } from '@/components/shared/PlatformBadge';
 import { useVera, type VeraPanelContext } from '@/hooks/use-vera';
 
 /* ─── Types ───────────────────────────────────────────────── */
@@ -26,7 +29,8 @@ type GoalCreatePhase =
   | 'brief-analyzing'
   | 'brand-intelligence'
   | 'goal-objective'
-  | 'media-purchase'
+  | 'media-type'
+  | 'platform-select'
   | 'target-cpm'
   | 'off-limits-topics'
   | 'goal-naming'
@@ -379,6 +383,8 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
   const [goalBiApproved, setGoalBiApproved] = useState(false);
   const [goalObjective, setGoalObjective] = useState('');
   const [mediaPurchaseMethod, setMediaPurchaseMethod] = useState('');
+  const [selectedMediaType, setSelectedMediaType] = useState<MediaType | ''>('');
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform | ''>('');
   const [targetCpm, setTargetCpm] = useState('');
   const [safetyTier, setSafetyTier] = useState<SafetyTierKey | ''>('');
   const [goalName, setGoalName] = useState('Harbor Brew Zero - US');
@@ -405,6 +411,8 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
       setGoalBiApproved(false);
       setGoalObjective('');
       setMediaPurchaseMethod('');
+      setSelectedMediaType('');
+      setSelectedPlatform('');
       setTargetCpm('');
       setSafetyTier('');
       setGoalName('Harbor Brew Zero - US');
@@ -559,7 +567,7 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
   /* ── Phase order for completed step tracking ── */
   const phaseOrder: GoalCreatePhase[] = [
     'creation-method', 'brief-upload', 'brief-analyzing', 'brand-intelligence',
-    'goal-objective', 'media-purchase', 'off-limits-topics', 'target-cpm', 'goal-naming',
+    'goal-objective', 'media-type', 'platform-select', 'off-limits-topics', 'target-cpm', 'goal-naming',
     'goal-created', 'dsp-syncing', 'complete',
   ];
   const currentIdx = phaseOrder.indexOf(goalPhase);
@@ -688,10 +696,10 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
                   key={opt.key}
                   onClick={() => {
                     setGoalObjective(opt.key);
-                    setGoalPhase('media-purchase');
+                    setGoalPhase('media-type');
                     addVeraMessage(
-                      `${opt.title} — great choice. Now I need to understand how you're buying this media. This helps me set the right brand safety controls and benchmarks — each channel has different risk profiles and optimization levers.`,
-                      'media-purchase',
+                      `${opt.title} — great choice. Now, what type of media will you be running? This determines which platforms are available and how I'll configure your measurement settings.`,
+                      'media-type',
                     );
                   }}
                   className="flex items-start gap-3 w-full px-4 py-3 rounded-xl border border-neutral-200 hover:border-plum-200 hover:bg-plum-25 transition-all text-left"
@@ -717,50 +725,117 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
           </div>
         ) : null;
 
-      /* ── Phase 6: Media Purchase Method ── */
-      case 'media-purchase':
-        return goalPhase === 'media-purchase' ? (
+      /* ── Phase 6a: Media Type ── */
+      case 'media-type':
+        return goalPhase === 'media-type' ? (
           <div className="ml-8">
             <WizardSectionHeader
               icon={<Globe className="h-5 w-5 text-plum-600" />}
-              title="Media Purchase Method"
+              title="Media Type"
             />
             <div className="space-y-2">
-              {[
-                { key: 'Open Web Programmatic', desc: 'RTB across exchanges and SSPs' },
-                { key: 'Social (Walled Gardens)', desc: 'Meta, TikTok, Snap, etc.' },
-                { key: 'PMP', desc: 'Private Marketplace deals' },
-                { key: 'Programmatic Guaranteed', desc: 'Direct, guaranteed buys' },
-              ].map(opt => (
-                <button
-                  key={opt.key}
-                  onClick={() => {
-                    setMediaPurchaseMethod(opt.key);
-                    setGoalPhase('off-limits-topics');
-                    addVeraMessage(
-                      `Got it — ${opt.key}. Before we set pricing, let's define your brand safety profile. This determines the quality of environments you're willing to buy in — which directly impacts what CPM is realistic. I have three tiers that balance protection against reach. Based on your CPG Beverage category, I'd recommend **Moderate** for the best balance.`,
-                      'off-limits-topics',
-                    );
-                  }}
-                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-neutral-200 hover:border-plum-200 hover:bg-plum-25 transition-all text-left"
-                >
-                  <div>
-                    <p className="text-body3 font-semibold text-cool-900">{opt.key}</p>
-                    <p className="text-label text-cool-500">{opt.desc}</p>
-                  </div>
-                </button>
-              ))}
+              {(['display', 'social', 'video', 'ctv'] as MediaType[]).map(mt => {
+                const config = mediaTypeConfigs[mt];
+                return (
+                  <button
+                    key={mt}
+                    onClick={() => {
+                      setSelectedMediaType(mt);
+                      // Map media type to CPM recommendation key
+                      const cpmMap: Record<MediaType, string> = {
+                        display: 'Open Web Programmatic',
+                        social: 'Social (Walled Gardens)',
+                        video: 'Open Web Programmatic',
+                        ctv: 'PMP',
+                      };
+                      setMediaPurchaseMethod(cpmMap[mt]);
+
+                      // If only 1 platform, auto-select and skip platform-select
+                      if (config.platforms.length === 1) {
+                        setSelectedPlatform(config.platforms[0]);
+                        setGoalPhase('off-limits-topics');
+                        addVeraMessage(
+                          `${config.label} selected — targeting ${platformConfigs[config.platforms[0]].label}. Before we set pricing, let's define your brand safety profile. This determines the quality of environments you're willing to buy in — which directly impacts what CPM is realistic.`,
+                          'off-limits-topics',
+                        );
+                      } else {
+                        // Multiple platforms — show platform-select
+                        setGoalPhase('platform-select');
+                        addVeraMessage(
+                          `${config.label} — great choice. Now, which platform will you be running on? Each has different measurement capabilities and optimization levers.`,
+                          'platform-select',
+                        );
+                      }
+                    }}
+                    className="flex items-start gap-3 w-full px-4 py-3 rounded-xl border border-neutral-200 hover:border-plum-200 hover:bg-plum-25 transition-all text-left"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-plum-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Globe className="h-4 w-4 text-plum-600" />
+                    </div>
+                    <div>
+                      <p className="text-body3 font-semibold text-cool-900">{config.label}</p>
+                      <p className="text-label text-cool-500">{config.desc}</p>
+                      <p className="text-caption text-cool-400 mt-0.5">{config.metricFocus}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        ) : isPastPhase('media-purchase') ? (
+        ) : isPastPhase('media-type') ? (
           <div className="ml-8">
             <StepSummary
               icon={<Globe className="h-3.5 w-3.5 text-cool-500" />}
-              label="Media Purchase"
-              value={mediaPurchaseMethod}
+              label="Media Type"
+              value={selectedMediaType ? mediaTypeConfigs[selectedMediaType].label : ''}
             />
           </div>
         ) : null;
+
+      /* ── Phase 6b: Platform Select ── */
+      case 'platform-select': {
+        const availablePlatforms = selectedMediaType ? mediaTypeConfigs[selectedMediaType].platforms : [];
+        return goalPhase === 'platform-select' ? (
+          <div className="ml-8">
+            <WizardSectionHeader
+              icon={<Globe className="h-5 w-5 text-plum-600" />}
+              title="Select Platform"
+            />
+            <div className="space-y-2">
+              {availablePlatforms.map(p => {
+                const pConfig = platformConfigs[p];
+                return (
+                  <button
+                    key={p}
+                    onClick={() => {
+                      setSelectedPlatform(p);
+                      setGoalPhase('off-limits-topics');
+                      addVeraMessage(
+                        `${pConfig.label} selected. Before we set pricing, let's define your brand safety profile. This determines the quality of environments you're willing to buy in — which directly impacts what CPM is realistic. Based on your CPG Beverage category, I'd recommend **Moderate** for the best balance.`,
+                        'off-limits-topics',
+                      );
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border border-neutral-200 hover:border-plum-200 hover:bg-plum-25 transition-all text-left"
+                  >
+                    <PlatformBadge platform={p} size="md" showLabel={false} />
+                    <div>
+                      <p className="text-body3 font-semibold text-cool-900">{pConfig.label}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : isPastPhase('platform-select') && selectedPlatform ? (
+          <div className="ml-8">
+            <StepSummary
+              icon={<Globe className="h-3.5 w-3.5 text-cool-500" />}
+              label="Platform"
+              value={selectedPlatform ? platformConfigs[selectedPlatform].label : ''}
+            />
+          </div>
+        ) : null;
+      }
 
       /* ── Phase 6: CPM Target — Smart Recommendation ── */
       case 'target-cpm': {
@@ -950,7 +1025,7 @@ export function VeraChatPanel({ open, onClose, context = 'general' }: VeraChatPa
                   setTargetCpm(rec.recommended);
                   setGoalPhase('target-cpm');
                   addVeraMessage(
-                    `${tier.name} profile selected — ${tier.alias}. Now I've cross-referenced your **${tier.name}** safety tier with **${mediaPurchaseMethod}** pricing to calculate a CPM target. A ${tier.name.toLowerCase()} tier means ${safetyTier === 'strict' ? 'higher block rates and tighter quality filters, which commands a premium' : safetyTier === 'moderate' ? 'balanced filtering that keeps CPMs competitive while protecting your brand' : 'minimal filtering, keeping costs low but requiring more post-bid monitoring'}. You can adjust this, but I'll flag if you go too low for your protection level.`,
+                    `${tier.name} profile selected — ${tier.alias}. Now I've cross-referenced your **${tier.name}** safety tier with **${selectedMediaType ? mediaTypeConfigs[selectedMediaType].label : mediaPurchaseMethod}** pricing to calculate a CPM target. A ${tier.name.toLowerCase()} tier means ${safetyTier === 'strict' ? 'higher block rates and tighter quality filters, which commands a premium' : safetyTier === 'moderate' ? 'balanced filtering that keeps CPMs competitive while protecting your brand' : 'minimal filtering, keeping costs low but requiring more post-bid monitoring'}. You can adjust this, but I'll flag if you go too low for your protection level.`,
                     'target-cpm',
                   );
                 }}
