@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting…</title>
+    <script>
+      // GitHub Pages SPA redirect
+      // Stores the full URL (path + query + hash) in sessionStorage and
+      // redirects to the base URL. index.html restores the route via replaceState.
+      var pathSegmentsToKeep = 1; // keep /dv-pinnacle-v3/
+      var l = window.location;
+      sessionStorage.redirect =
+        l.protocol +
+        '//' +
+        l.hostname +
+        (l.port ? ':' + l.port : '') +
+        l.pathname +
+        l.search +
+        l.hash;
+      l.replace(
+        l.protocol +
+          '//' +
+          l.hostname +
+          (l.port ? ':' + l.port : '') +
+          l.pathname
+            .split('/')
+            .slice(0, 1 + pathSegmentsToKeep)
+            .join('/') +
+          '/'
+      );
+    </script>
+  </head>
+  <body>
+    Redirecting&hellip;
+  </body>
+</html>
